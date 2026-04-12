@@ -1,0 +1,18 @@
+services:
+  backend:
+    build: ./backend
+    container_name: network-panel-backend
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    security_opt:
+      - apparmor:unconfined
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /etc/hostname:/host/etc/hostname:ro
+      - /proc/uptime:/host/proc/uptime:ro
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
+      - /var/lib/misc:/host/var/lib/misc:ro
+      - /usr/local/bin/service-lan-inet-on.sh:/usr/local/bin/service-lan-inet-on.sh:ro
+      - /usr/local/bin/service-lan-inet-off.sh:/usr/local/bin/service-lan-inet-off.sh:ro
