@@ -3,84 +3,105 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>R1000 Network Panel</title>
+  <title>R1000 Device Admin</title>
   <style>
     :root {
-      --bg: #09111a;
-      --panel: rgba(10, 18, 30, 0.88);
-      --panel-strong: rgba(6, 12, 22, 0.94);
-      --panel-soft: rgba(15, 23, 42, 0.72);
+      --bg: #08111b;
+      --bg-soft: #0d1724;
+      --panel: rgba(11, 18, 30, 0.88);
+      --panel-strong: rgba(7, 12, 21, 0.94);
+      --panel-soft: rgba(17, 24, 39, 0.74);
       --line: rgba(148, 163, 184, 0.16);
-      --text: #e5eef9;
-      --muted: #95a3b7;
-      --accent: #22c55e;
-      --accent-soft: rgba(34, 197, 94, 0.14);
+      --text: #ecf3fb;
+      --muted: #97a6bc;
       --primary: #0ea5e9;
       --primary-2: #2563eb;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.16);
       --warn: #f59e0b;
+      --danger: #ef4444;
+      --shadow: 0 20px 44px rgba(2, 6, 23, 0.28);
+    }
+    body[data-theme="light"] {
+      --bg: #dfe8f2;
+      --bg-soft: #edf2f7;
+      --panel: rgba(248, 251, 254, 0.88);
+      --panel-strong: rgba(252, 253, 255, 0.96);
+      --panel-soft: rgba(232, 238, 245, 0.84);
+      --line: rgba(71, 85, 105, 0.12);
+      --text: #132235;
+      --muted: #5b6b7f;
+      --accent-soft: rgba(34, 197, 94, 0.12);
+      --shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
     }
     * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 26%),
-        radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.16), transparent 24%),
-        linear-gradient(180deg, #071018 0%, #0b1320 50%, #111827 100%);
       color: var(--text);
       font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.15), transparent 24%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
     }
-    button, input, select { font: inherit; }
+    button, input, select, textarea { font: inherit; }
     .shell {
-      display: grid;
-      grid-template-columns: 260px 1fr;
       min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr;
     }
     .sidebar {
-      padding: 20px 16px;
-      border-right: 1px solid var(--line);
-      background: rgba(4, 8, 15, 0.82);
-      backdrop-filter: blur(18px);
       position: sticky;
       top: 0;
       height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 18px 16px;
+      background: rgba(6, 10, 18, 0.84);
+      border-right: 1px solid var(--line);
+      backdrop-filter: blur(18px);
     }
-    .brand { margin-bottom: 18px; }
-    .brand h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; }
-    .brand p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
-    .nav-group { display: grid; gap: 8px; margin-top: 20px; }
+    body[data-theme="light"] .sidebar {
+      background: rgba(244, 248, 252, 0.88);
+    }
+    .brand h1 { margin: 0; font-size: 24px; }
+    .brand p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .nav-group { display: grid; gap: 8px; }
     .nav-button {
+      width: 100%;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      width: 100%;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text);
+      gap: 8px;
       padding: 12px 14px;
-      border-radius: 14px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      color: var(--text);
+      background: transparent;
       cursor: pointer;
       text-align: left;
     }
     .nav-button:hover, .nav-button.active {
       background: rgba(14, 165, 233, 0.12);
-      border-color: rgba(56, 189, 248, 0.18);
+      border-color: rgba(56, 189, 248, 0.2);
     }
     .nav-label { font-weight: 700; }
     .nav-hint { color: var(--muted); font-size: 12px; }
-    .sidebar-foot {
-      margin-top: 24px;
+    .sidebar-spacer { flex: 1; }
+    .sidebar-foot, .sidebar-system {
       padding: 14px;
       border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(8, 15, 29, 0.72);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
     }
     .refresh-state {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 12px;
       color: var(--muted);
+      font-size: 12px;
     }
     .dot {
       width: 10px;
@@ -96,69 +117,109 @@
       background: var(--warn);
       box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
     }
-    .main { padding: 18px 18px 28px; }
+    .main {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
     .toolbar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
-      margin-bottom: 18px;
+      flex-wrap: wrap;
     }
-    .toolbar-main h2 { margin: 0; font-size: 28px; }
-    .toolbar-main p { margin: 4px 0 0; color: var(--muted); }
+    .toolbar-main h2 { margin: 0; font-size: 30px; }
+    .toolbar-main p { margin: 6px 0 0; color: var(--muted); }
     .toolbar-actions {
       display: flex;
       gap: 10px;
       align-items: center;
       flex-wrap: wrap;
     }
-    .ghost-chip, .badge {
+    .chip, .badge {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       border-radius: 999px;
       padding: 8px 12px;
-      font-size: 12px;
       border: 1px solid var(--line);
-      background: rgba(8, 15, 29, 0.72);
+      background: var(--panel);
       color: var(--muted);
+      font-size: 12px;
     }
+    .badge.session-count {
+      min-width: 36px;
+      justify-content: center;
+      font-weight: 700;
+    }
+    .badge.session-count.idle {
+      background: rgba(100, 116, 139, 0.14);
+      color: #94a3b8;
+    }
+    .badge.session-count.low {
+      background: rgba(14, 165, 233, 0.14);
+      color: #7dd3fc;
+    }
+    .badge.session-count.busy {
+      background: rgba(249, 115, 22, 0.16);
+      color: #fdba74;
+    }
+    body[data-theme="light"] .badge.session-count.idle { color: #64748b; }
+    body[data-theme="light"] .badge.session-count.low { color: #0369a1; }
+    body[data-theme="light"] .badge.session-count.busy { color: #c2410c; }
+    .section-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(34, 197, 94, 0.24);
+      color: #8ff0af;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    body[data-theme="light"] .section-pill { color: #166534; }
     button {
       border: none;
-      border-radius: 12px;
-      padding: 9px 14px;
+      border-radius: 14px;
+      padding: 10px 14px;
       cursor: pointer;
       color: white;
       font-weight: 700;
       background: linear-gradient(135deg, var(--primary), var(--primary-2));
-      box-shadow: 0 10px 22px rgba(37, 99, 235, 0.26);
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
     }
     button.secondary {
-      background: rgba(15, 23, 42, 0.9);
-      box-shadow: none;
-      border: 1px solid var(--line);
+      background: var(--panel-soft);
       color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
     }
     button.warn {
       background: linear-gradient(135deg, #f97316, #ea580c);
-      box-shadow: 0 10px 22px rgba(234, 88, 12, 0.24);
+      box-shadow: 0 12px 24px rgba(234, 88, 12, 0.18);
     }
-    .page { display: none; gap: 14px; }
-    .page.active { display: grid; }
+    button.danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 12px 24px rgba(220, 38, 38, 0.18);
+    }
+    .page { display: none; }
+    .page.active { display: block; }
     .grid {
       display: grid;
       gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
     }
-    .grid.single { grid-template-columns: 1fr; }
+    .span-2 { grid-column: span 2; }
     .card {
-      border: 1px solid var(--line);
-      border-radius: 20px;
       background: var(--panel);
-      box-shadow: 0 18px 42px rgba(2, 6, 23, 0.28);
-      backdrop-filter: blur(16px);
+      border: 1px solid var(--line);
+      border-radius: 22px;
       padding: 16px;
-      overflow-wrap: anywhere;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
     }
     .card-header {
       display: flex;
@@ -168,104 +229,177 @@
       margin-bottom: 12px;
     }
     .card-header h3 { margin: 0; font-size: 18px; }
-    .card-header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .card-header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
     .stat-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
     }
     .metric {
+      min-height: 76px;
       padding: 10px 12px;
-      border-radius: 14px;
-      background: var(--panel-soft);
+      border-radius: 16px;
       border: 1px solid rgba(148, 163, 184, 0.1);
-      min-height: 70px;
+      background: var(--panel-soft);
     }
     .label {
+      font-size: 11px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      font-size: 11px;
     }
-    .value { margin-top: 6px; font-size: 18px; font-weight: 700; line-height: 1.25; }
-    .value.small { font-size: 15px; }
+    .value {
+      margin-top: 6px;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .value.small { font-size: 14px; }
+    .muted {
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .route, .list-box {
       margin-top: 10px;
       padding: 12px;
-      border-radius: 14px;
-      background: rgba(8, 15, 29, 0.66);
-      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: rgba(7, 12, 21, 0.44);
+    }
+    body[data-theme="light"] .route, body[data-theme="light"] .list-box {
+      background: rgba(250, 252, 255, 0.76);
     }
     .controls {
+      margin-top: 12px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 12px;
     }
-    input, select {
+    .inline-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    input, select, textarea {
       width: 100%;
       margin-top: 6px;
-      padding: 9px 11px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(2, 6, 23, 0.82);
       color: var(--text);
-      background: rgba(2, 6, 23, 0.86);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      border-radius: 12px;
     }
-    input:focus, select:focus {
+    textarea {
+      min-height: 144px;
+      resize: vertical;
+      font-family: "Cascadia Code", "SFMono-Regular", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    body[data-theme="light"] input,
+    body[data-theme="light"] select,
+    body[data-theme="light"] textarea {
+      background: rgba(253, 254, 255, 0.9);
+    }
+    input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: rgba(56, 189, 248, 0.44);
       box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
     }
-    .section-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 700;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      color: #86efac;
-      border: 1px solid rgba(34, 197, 94, 0.2);
-    }
-    .hint { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .service-list, .client-list, .session-list, .interface-list, .share-list, .wifi-list { display: grid; gap: 10px; }
-    .service-list {
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
+    .hint { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .item-list, .service-list { display: grid; gap: 10px; }
+    .service-list { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
     .item {
       padding: 12px;
-      border-radius: 14px;
+      border-radius: 16px;
       border: 1px solid rgba(148, 163, 184, 0.12);
-      background: rgba(6, 11, 23, 0.58);
+      background: rgba(7, 12, 21, 0.56);
+    }
+    body[data-theme="light"] .item { background: rgba(251, 253, 255, 0.7); }
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .item-title {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .service-card {
       cursor: pointer;
-      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+      transition: transform 180ms ease, border-color 180ms ease;
     }
     .service-card:hover {
       transform: translateY(-2px);
-      border-color: rgba(56, 189, 248, 0.26);
-      box-shadow: 0 18px 36px rgba(2, 6, 23, 0.2);
+      border-color: rgba(56, 189, 248, 0.28);
     }
-    .item-top {
+    .tag-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .mini-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(14, 165, 233, 0.08);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .switch-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      margin-bottom: 8px;
     }
-    .item-title { font-weight: 700; }
-    .item-summary {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.5;
-      min-height: 38px;
+    .switch {
+      position: relative;
+      width: 52px;
+      height: 30px;
+      flex: 0 0 auto;
     }
-    .service-link { color: #7dd3fc; text-decoration: none; font-weight: 700; }
-    .service-link:hover { text-decoration: underline; }
-    .muted { color: var(--muted); }
-    .span-2 { grid-column: span 2; }
+    .switch.busy {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .switch input { display: none; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(100, 116, 139, 0.5);
+      transition: 180ms ease;
+      cursor: pointer;
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      left: 4px;
+      top: 4px;
+      border-radius: 999px;
+      background: white;
+      transition: 180ms ease;
+      box-shadow: 0 4px 10px rgba(2, 6, 23, 0.22);
+    }
+    .switch input:checked + .slider {
+      background: linear-gradient(135deg, var(--accent), #16a34a);
+    }
+    .switch input:checked + .slider::before {
+      transform: translateX(22px);
+    }
     .overlay {
       position: fixed;
       inset: 0;
@@ -277,75 +411,90 @@
       backdrop-filter: blur(8px);
       z-index: 1000;
     }
-    .overlay.open {
-      display: flex;
-      animation: overlayFade 180ms ease;
-    }
+    .overlay.open { display: flex; }
     .overlay-card {
-      width: min(720px, 100%);
-      max-height: 85vh;
+      width: min(920px, 100%);
+      max-height: 88vh;
       overflow: auto;
-      border-radius: 22px;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      background: rgba(8, 15, 29, 0.96);
-      box-shadow: 0 26px 60px rgba(2, 6, 23, 0.38);
       padding: 18px;
-      animation: overlayPop 220ms ease;
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: var(--panel-strong);
+      box-shadow: 0 28px 60px rgba(2, 6, 23, 0.4);
     }
     .overlay-head {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
       align-items: flex-start;
+      gap: 12px;
       margin-bottom: 14px;
     }
-    .overlay-head h3 {
+    .overlay-head h3 { margin: 0; font-size: 22px; }
+    pre {
       margin: 0;
-      font-size: 22px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "Cascadia Code", "SFMono-Regular", monospace;
+      font-size: 12px;
+      line-height: 1.55;
     }
-    .overlay-close {
-      min-width: 42px;
-      padding: 8px 12px;
+    .code-box {
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: rgba(2, 6, 23, 0.76);
+      margin-top: 10px;
     }
-    @keyframes overlayFade {
-      from { opacity: 0; }
-      to { opacity: 1; }
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
-    @keyframes overlayPop {
-      from { opacity: 0; transform: translateY(10px) scale(0.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    @media (max-width: 1080px) {
+    @media (max-width: 1180px) {
       .shell { grid-template-columns: 1fr; }
       .sidebar {
         position: static;
         height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--line);
       }
-      .nav-group { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+      .nav-group { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+      .span-2 { grid-column: span 1; }
     }
   </style>
 </head>
-<body>
+<body data-theme="dark">
   <div class="shell">
     <aside class="sidebar">
       <div class="brand">
-        <h1>R1000 Admin</h1>
-        <p>Compact network, LTE, storage and service control.</p>
+        <h1>R1000 Device Admin</h1>
+        <p>Modern device control for network, wireless, storage, services and future radio modules.</p>
       </div>
       <div class="nav-group">
-        <button class="nav-button active" data-view="dashboard" onclick="setView('dashboard')"><span><div class="nav-label">Dashboard</div><div class="nav-hint">Overview and quick status</div></span></button>
-        <button class="nav-button" data-view="network" onclick="setView('network')"><span><div class="nav-label">Network</div><div class="nav-hint">LANs, interfaces and clients</div></span></button>
-        <button class="nav-button" data-view="wireless" onclick="setView('wireless')"><span><div class="nav-label">Wireless</div><div class="nav-hint">Wi-Fi scan, client and hotspot</div></span></button>
-        <button class="nav-button" data-view="services" onclick="setView('services')"><span><div class="nav-label">Services</div><div class="nav-hint">Samba and local services</div></span></button>
+        <button class="nav-button" data-view="dashboard" onclick="setView('dashboard')"><span><div class="nav-label">Dashboard</div><div class="nav-hint">Overview, health and quick status</div></span></button>
+        <button class="nav-button" data-view="network" onclick="setView('network')"><span><div class="nav-label">Network</div><div class="nav-hint">LAN roles, clients and interfaces</div></span></button>
+        <button class="nav-button" data-view="wireless" onclick="setView('wireless')"><span><div class="nav-label">Wireless</div><div class="nav-hint">Wi-Fi mode, scan and hotspot</div></span></button>
+        <button class="nav-button" data-view="cellular" onclick="setView('cellular')"><span><div class="nav-label">Cellular</div><div class="nav-hint">Signal, APN, raw profile and AT tools</div></span></button>
+        <button class="nav-button" data-view="monitoring" onclick="setView('monitoring')"><span><div class="nav-label">Monitoring</div><div class="nav-hint">Pi-hole, NetAlertX and network visibility</div></span></button>
+        <button class="nav-button" data-view="services" onclick="setView('services')"><span><div class="nav-label">Services</div><div class="nav-hint">Local listeners and service entry points</div></span></button>
+        <button class="nav-button" data-view="filesharing" onclick="setView('filesharing')"><span><div class="nav-label">File Sharing</div><div class="nav-hint">Samba, printing and future NFS</div></span></button>
+        <button class="nav-button" data-view="filesystem" onclick="setView('filesystem')"><span><div class="nav-label">File System</div><div class="nav-hint">Mounts, disks and external storage</div></span></button>
+        <button class="nav-button" data-view="lorawan" onclick="setView('lorawan')"><span><div class="nav-label">LoRaWAN</div><div class="nav-hint">Reserved for future radio modules</div></span></button>
       </div>
+      <div class="sidebar-spacer"></div>
       <div class="sidebar-foot">
         <div class="refresh-state"><span id="refresh-dot" class="dot live"></span><span id="refresh-state">Auto refresh live</span></div>
-        <div class="hint" id="refresh-detail">Manual refresh is always available. Auto refresh pauses while you are editing a form.</div>
-        <div class="nav-group">
-          <button class="nav-button" onclick="restartSystem()"><span><div class="nav-label">Restart</div><div class="nav-hint">Reboot the device</div></span></button>
-          <button class="nav-button" onclick="powerOffSystem()"><span><div class="nav-label">Power Off</div><div class="nav-hint">Shut down the device</div></span></button>
+        <div class="hint" id="refresh-detail">Forms stay local while you are editing, then background refresh resumes.</div>
+        <div class="controls">
+          <button class="secondary" onclick="toggleTheme()">Theme</button>
+          <button class="secondary" onclick="render()">Sync Now</button>
+        </div>
+      </div>
+      <div class="sidebar-system">
+        <div class="section-title">System</div>
+        <div class="controls">
+          <button class="secondary" onclick="restartSystem()">Restart</button>
+          <button class="danger" onclick="powerOffSystem()">Power Off</button>
         </div>
       </div>
     </aside>
@@ -354,77 +503,180 @@
       <div class="toolbar">
         <div class="toolbar-main">
           <h2 id="page-title">Dashboard</h2>
-          <p id="page-subtitle">Current uplinks, system health and quick entry points.</p>
+          <p id="page-subtitle">Device overview, usage and quick health.</p>
         </div>
         <div class="toolbar-actions">
-          <span id="last-sync" class="ghost-chip">Waiting for first sync</span>
-          <button class="secondary" onclick="render()">Sync Now</button>
+          <span id="theme-chip" class="chip">Theme: dark</span>
+          <span id="last-sync" class="chip">Waiting for first sync</span>
         </div>
       </div>
 
-      <section id="page-dashboard" class="page active">
+      <section id="page-dashboard" class="page">
         <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>Overview</h3><p>System identity, active uplinks and local port summary.</p></div><span class="section-pill">Home</span></div><div id="overview">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>LTE</h3><p>Radio state, signal and registration details.</p></div></div><div id="lte">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>LTE APN</h3><p>Provider presets, auto-apply and manual override.</p></div></div><div id="lte-apn">Loading...</div></div>
+          <div class="card span-2">
+            <div class="card-header"><div><h3>Device Overview</h3><p>Identity, usage, routes and current local access.</p></div><span class="section-pill">Home</span></div>
+            <div id="overview">Loading...</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><h3>Docker Brief</h3><p>Running containers and quick service pulse.</p></div></div>
+            <div id="docker-brief">Loading...</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><h3>Live Sessions</h3><p>Recent SSH, dashboard and local service sessions.</p></div><span id="dashboard-session-count" class="badge session-count idle">0</span></div>
+            <div id="dashboard-sessions">Loading...</div>
+          </div>
         </div>
       </section>
 
       <section id="page-network" class="page">
         <div class="grid">
-          <div class="card"><div class="card-header"><div><h3>Service LAN</h3><p>Isolated client network with controlled internet access.</p></div></div><div id="service-lan">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Main LAN</h3><p>General LAN profile for your local network and homelab.</p></div></div><div id="main-lan">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>Interfaces</h3><p>Physical port state, addressing and link controls.</p></div></div><div id="interfaces">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Connected Clients</h3><p>Detected LAN clients and the interface they use.</p></div></div><div id="service-lan-clients">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Active Sessions</h3><p>Current established sessions visible on the box.</p></div></div><div id="active-sessions">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>Main LAN</h3><p>Trusted local network and homelab segment.</p></div></div><div id="main-lan">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>Service LAN</h3><p>Isolated service or client network with independent policy.</p></div></div><div id="service-lan">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Interfaces</h3><p>Grouped by role so physical and virtual links are easier to scan.</p></div></div><div id="interfaces">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Connected Clients</h3><p>Detected LAN clients and where they are attached.</p></div></div><div id="service-lan-clients">Loading...</div></div>
         </div>
       </section>
 
       <section id="page-wireless" class="page">
-        <div class="grid single">
-          <div class="card"><div class="card-header"><div><h3>Wi-Fi</h3><p>Client mode, hotspot mode and visible wireless networks.</p></div></div><div id="wifi-panel">Loading...</div></div>
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>Wireless</h3><p>Client mode, hotspot mode, radio power and per-Wi-Fi Pi-hole policy.</p></div></div><div id="wifi-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-cellular" class="page">
+        <div class="grid">
+          <div class="card"><div class="card-header"><div><h3>Cellular State</h3><p>Registration, signal and modem health.</p></div></div><div id="cellular-state">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>Cellular APN</h3><p>Preset profile editor, raw profile view and auto apply.</p></div></div><div id="cellular-apn">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>AT Command Line</h3><p>Direct modem commands with guardrails. Use carefully.</p></div></div><div id="cellular-at">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-monitoring" class="page">
+        <div class="grid">
+          <div class="card"><div class="card-header"><div><h3>Pi-hole</h3><p>Per-network toggles, status and forwarding visibility.</p></div></div><div id="pihole-panel">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>NetAlertX</h3><p>Network discovery, map view and install controls.</p></div></div><div id="netalert-panel">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Topology Blueprint</h3><p>How uplink, gateway, LAN segments and overlays should appear in discovery tools.</p></div></div><div id="topology-panel">Loading...</div></div>
         </div>
       </section>
 
       <section id="page-services" class="page">
         <div class="grid">
-          <div class="card"><div class="card-header"><div><h3>Services</h3><p>Detected listeners and direct open links.</p></div></div><div id="services">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Samba</h3><p>Host config, shares and password controls.</p></div></div><div id="samba-panel">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Services</h3><p>Detected listeners with docker/system tags and compact cards.</p></div></div><div id="services">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-filesharing" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>Samba</h3><p>Shares, users, guest policy and portal managed config.</p></div></div><div id="samba-panel">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>Printing</h3><p>CUPS state and printer share status.</p></div></div><div id="printing-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-filesystem" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>File System</h3><p>Disk layout, mounts and removable media visibility.</p></div></div><div id="filesystem-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-lorawan" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>LoRaWAN / Meshtastic</h3><p>Reserved space for future radio module settings and profiles.</p></div></div><div id="lorawan-panel"></div></div>
         </div>
       </section>
     </main>
   </div>
 
-  <div id="service-overlay" class="overlay" onclick="dismissOverlay(event)">
+  <div id="service-overlay" class="overlay" onclick="dismissOverlay(event, 'service-overlay')">
     <div class="overlay-card">
       <div class="overlay-head">
-        <div>
-          <h3 id="overlay-title">Service</h3>
-          <p id="overlay-subtitle" class="muted">Details</p>
-        </div>
-        <button class="secondary overlay-close" onclick="closeServiceOverlay()">Close</button>
+        <div><h3 id="overlay-title">Service</h3><p id="overlay-subtitle" class="muted">Details</p></div>
+        <button class="secondary" onclick="closeServiceOverlay()">Close</button>
       </div>
-      <div id="overlay-body">Loading...</div>
+      <div id="overlay-body"></div>
+    </div>
+  </div>
+
+  <div id="command-overlay" class="overlay" onclick="dismissOverlay(event, 'command-overlay')">
+    <div class="overlay-card">
+      <div class="overlay-head">
+        <div><h3 id="command-title">Preview</h3><p id="command-subtitle" class="muted">Review and run</p></div>
+        <button class="secondary" onclick="closeCommandOverlay()">Close</button>
+      </div>
+      <div class="route">
+        <div class="label">Editable Request Payload</div>
+        <textarea id="command-payload"></textarea>
+      </div>
+      <div class="route">
+        <div class="label">Commands That Will Run</div>
+        <div class="code-box"><pre id="command-preview"></pre></div>
+      </div>
+      <div class="controls">
+        <button id="command-run">Run</button>
+        <button class="secondary" onclick="refreshCommandPreview()">Refresh Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="text-overlay" class="overlay" onclick="dismissOverlay(event, 'text-overlay')">
+    <div class="overlay-card">
+      <div class="overlay-head">
+        <div><h3 id="text-overlay-title">Details</h3><p id="text-overlay-subtitle" class="muted">Text view</p></div>
+        <button class="secondary" onclick="closeTextOverlay()">Close</button>
+      </div>
+      <div class="code-box"><pre id="text-overlay-body"></pre></div>
     </div>
   </div>
 
   <script>
-    const appState = { drafts: {}, activeView: 'dashboard', lastSyncAt: null, serviceDetails: {} };
-    const VIEW_META = {
-      dashboard: { title: 'Dashboard', subtitle: 'Current uplinks, system health and quick entry points.' },
-      network: { title: 'Network', subtitle: 'Main LAN, Service LAN, clients and physical interfaces.' },
-      wireless: { title: 'Wireless', subtitle: 'Scan nearby networks, switch mode and manage hotspot settings.' },
-      services: { title: 'Services', subtitle: 'Open local tools quickly and inspect Samba state.' },
+    const appState = {
+      drafts: {},
+      activeView: sessionStorage.getItem('portal.activeView') || 'dashboard',
+      lastSyncAt: null,
+      serviceDetails: {},
+      commandContext: null,
+      rawProfile: '',
+      pendingToggles: {},
     };
+    window.appState = appState;
+    const VIEW_META = {
+      dashboard: { title: 'Dashboard', subtitle: 'Device overview, usage and quick health.' },
+      network: { title: 'Network', subtitle: 'LAN roles, clients, DNS policy and interface control.' },
+      wireless: { title: 'Wireless', subtitle: 'Wi-Fi scan, hotspot, radio power and wireless DNS policy.' },
+      cellular: { title: 'Cellular', subtitle: 'Modem signal, APN editor, raw profile and AT command tools.' },
+      monitoring: { title: 'Monitoring', subtitle: 'Pi-hole, NetAlertX and network visibility tools.' },
+      services: { title: 'Services', subtitle: 'Compact service discovery with docker/system source tags.' },
+      filesharing: { title: 'File Sharing', subtitle: 'Samba, users, shares and future NFS style expansion.' },
+      filesystem: { title: 'File System', subtitle: 'Storage topology, mounts and removable device visibility.' },
+      lorawan: { title: 'LoRaWAN', subtitle: 'Placeholder for future LoRa, Meshtastic and radio workflows.' },
+    };
+    const REACTIVE_DRAFT_KEYS = new Set([
+      'main_lan.ipv4_mode',
+      'main_lan.ipv6_mode',
+      'service_lan.ipv4_mode',
+      'service_lan.ipv6_mode',
+      'wifi.mode',
+      'wifi.client_trust_mode',
+      'wifi.band',
+      'wifi.ipv4_method',
+      'wifi.ipv6_method',
+    ]);
+    const AUTO_REFRESH_MS = 30000;
 
-    async function loadJSON(url) { const res = await fetch(url); return await res.json(); }
-    function draftValue(key, fallback) { return Object.prototype.hasOwnProperty.call(appState.drafts, key) ? appState.drafts[key] : (fallback ?? ''); }
+    function draftValue(key, fallback) {
+      return Object.prototype.hasOwnProperty.call(appState.drafts, key) ? appState.drafts[key] : (fallback ?? '');
+    }
     function bindDraft(id, key) {
       const el = document.getElementById(id);
       if (!el) return;
       const capture = () => {
-        appState.drafts[key] = el.type === 'checkbox' ? (el.checked ? 'true' : 'false') : el.value;
+        appState.drafts[key] = el.type === 'checkbox' ? el.checked : el.value;
+        if ((key === 'main_lan.ipv4_mode' || key === 'service_lan.ipv4_mode') && el.value === 'disabled') {
+          appState.drafts[key.replace('ipv4_mode', 'ipv6_mode')] = 'disabled';
+        }
         updateRefreshState();
+        if (REACTIVE_DRAFT_KEYS.has(key)) {
+          setTimeout(() => render(), 0);
+        }
       };
       el.oninput = capture;
       el.onchange = capture;
@@ -433,10 +685,58 @@
       Object.keys(appState.drafts).filter(key => key.startsWith(prefix)).forEach(key => delete appState.drafts[key]);
       updateRefreshState();
     }
+    function isTogglePending(key) {
+      return Boolean(appState.pendingToggles[key]);
+    }
+    function setTogglePending(key, pending) {
+      if (pending) appState.pendingToggles[key] = true;
+      else delete appState.pendingToggles[key];
+    }
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+    async function loadJSON(url) {
+      const res = await fetch(url);
+      return await res.json();
+    }
+    async function fetchJSON(url, options) {
+      const res = await fetch(url, options);
+      let payload = {};
+      try { payload = await res.json(); } catch (err) {}
+      if (!res.ok) {
+        const detail = payload.detail || payload || {};
+        if (typeof detail === 'string') throw new Error(detail);
+        throw new Error(detail.stderr || detail.stdout || 'Request failed');
+      }
+      return payload;
+    }
+    async function postAction(endpoint, fallbackMessage, payload = null) {
+      try {
+        const response = await fetchJSON(endpoint, {
+          method: 'POST',
+          headers: payload ? { 'Content-Type': 'application/json' } : undefined,
+          body: payload ? JSON.stringify(payload) : undefined,
+        });
+        if (response.ok === false) throw new Error(response.stderr || fallbackMessage);
+        return response;
+      } catch (err) {
+        alert(err.message || fallbackMessage);
+        return null;
+      }
+    }
     function hasActiveEditing() {
       const active = document.activeElement;
       const focusedEdit = active && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName);
-      return focusedEdit || Object.keys(appState.drafts).length > 0;
+      return focusedEdit
+        || Object.keys(appState.drafts).length > 0
+        || document.getElementById('command-overlay').classList.contains('open')
+        || document.getElementById('service-overlay').classList.contains('open')
+        || document.getElementById('text-overlay').classList.contains('open');
     }
     function updateRefreshState() {
       const editing = hasActiveEditing();
@@ -445,12 +745,13 @@
       const detail = document.getElementById('refresh-detail');
       if (dot) dot.className = `dot ${editing ? 'pause' : 'live'}`;
       if (label) label.textContent = editing ? 'Auto refresh paused while editing' : 'Auto refresh live';
-      if (detail) detail.textContent = editing ? 'Your open form values stay local until you save or sync manually.' : 'The page refreshes in the background every 10 seconds.';
-      const sync = document.getElementById('last-sync');
-      if (sync && appState.lastSyncAt) sync.textContent = `Last sync ${new Date(appState.lastSyncAt).toLocaleTimeString()}`;
+      if (detail) detail.textContent = editing ? 'Draft values stay local until you save or run them.' : 'The page refreshes in the background every 30 seconds.';
+      document.getElementById('theme-chip').textContent = `Theme: ${document.body.dataset.theme}`;
+      if (appState.lastSyncAt) document.getElementById('last-sync').textContent = `Last sync ${new Date(appState.lastSyncAt).toLocaleTimeString()}`;
     }
     function setView(view) {
       appState.activeView = view;
+      sessionStorage.setItem('portal.activeView', view);
       Object.entries(VIEW_META).forEach(([key, meta]) => {
         const page = document.getElementById(`page-${key}`);
         const button = document.querySelector(`.nav-button[data-view="${key}"]`);
@@ -462,202 +763,34 @@
         }
       });
     }
-    async function postAction(endpoint, fallbackMessage) {
-      const res = await fetch(endpoint, { method: 'POST' });
-      if (!res.ok) {
-        let message = fallbackMessage;
-        try {
-          const payload = await res.json();
-          const detail = payload.detail || payload;
-          if (typeof detail === 'string') message = detail;
-          else if (detail && detail.stderr) message = detail.stderr;
-        } catch (err) {}
-        alert(message);
-        return false;
-      }
-      const payload = await res.json();
-      if (!payload.ok) {
-        alert(payload.stderr || fallbackMessage);
-        return false;
-      }
-      return true;
+    function loadTheme() {
+      const theme = localStorage.getItem('portal.theme') || 'dark';
+      document.body.dataset.theme = theme;
+      updateRefreshState();
     }
-    async function toggleServiceLanInternet(mode) { const ok = await postAction(mode === 'on' ? '/api/service-lan/internet/on' : '/api/service-lan/internet/off', 'Failed to change Service LAN internet state'); if (ok) await render(); }
-    async function restartSystem() {
-      if (!confirm('Restart the device now?')) return;
-      const ok = await postAction('/api/system/restart', 'Failed to restart the device');
-      if (ok) alert('Restart command sent.');
+    function toggleTheme() {
+      document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('portal.theme', document.body.dataset.theme);
+      updateRefreshState();
     }
-    async function powerOffSystem() {
-      if (!confirm('Power off the device now?')) return;
-      const ok = await postAction('/api/system/poweroff', 'Failed to power off the device');
-      if (ok) alert('Power off command sent.');
+    function getUptimeMode() {
+      return sessionStorage.getItem('portal.uptimeMode') || 'dhm';
     }
-    async function applyMainLan() { const ok = await postAction('/api/main-lan/apply', 'Failed to apply Main LAN profile'); if (ok) await render(); }
-    async function applyServiceLan() { const ok = await postAction('/api/service-lan/apply', 'Failed to apply Service LAN profile'); if (ok) await render(); }
-    async function restartMainLan() { const ok = await postAction('/api/main-lan/restart', 'Failed to restart Main LAN connection'); if (ok) await render(); }
-    async function restartServiceLan() { const ok = await postAction('/api/service-lan/restart', 'Failed to restart Service LAN connection'); if (ok) await render(); }
-    async function toggleMainLanInternet(mode) { const ok = await postAction(mode === 'on' ? '/api/main-lan/internet/on' : '/api/main-lan/internet/off', 'Failed to change Main LAN internet state'); if (ok) await render(); }
-    async function saveMainLanConfig() {
-      const payload = {
-        role: document.getElementById('main-lan-role').value,
-        ipv4_mode: document.getElementById('main-lan-ipv4-mode').value,
-        ipv4_address: document.getElementById('main-lan-ipv4-address').value,
-        ipv4_subnet: document.getElementById('main-lan-ipv4-subnet').value,
-        dhcp_range: document.getElementById('main-lan-dhcp-range').value,
-        ipv6_mode: document.getElementById('main-lan-ipv6-mode').value,
-        ipv6_address: document.getElementById('main-lan-ipv6-address').value,
-        ipv6_prefix: document.getElementById('main-lan-ipv6-prefix').value,
-        dns_servers: document.getElementById('main-lan-dns-servers').value,
-      };
-      const res = await fetch('/api/main-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { alert('Failed to save Main LAN configuration'); return; }
-      clearDraft('main_lan.');
-      await render();
+    function cycleUptimeMode() {
+      const order = ['seconds', 'clock', 'dhm'];
+      const current = getUptimeMode();
+      const next = order[(order.indexOf(current) + 1) % order.length];
+      sessionStorage.setItem('portal.uptimeMode', next);
+      render();
     }
-    async function saveServiceLanConfig() {
-      const payload = {
-        role: document.getElementById('service-lan-role').value,
-        ipv4_mode: document.getElementById('service-lan-ipv4-mode').value,
-        ipv4_gateway: document.getElementById('service-lan-ipv4-gateway').value,
-        ipv4_subnet: document.getElementById('service-lan-ipv4-subnet').value,
-        dhcp_range: document.getElementById('service-lan-dhcp-range').value,
-        ipv6_mode: document.getElementById('service-lan-ipv6-mode').value,
-        ipv6_gateway: document.getElementById('service-lan-ipv6-gateway').value,
-        ipv6_prefix: document.getElementById('service-lan-ipv6-prefix').value,
-        dns_servers: document.getElementById('service-lan-dns-servers').value,
-      };
-      const res = await fetch('/api/service-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { alert('Failed to save Service LAN configuration'); return; }
-      clearDraft('service_lan.');
-      await render();
-    }
-    async function saveWifiConfig() {
-      const payload = {
-        interface: document.getElementById('wifi-interface').value,
-        mode: document.getElementById('wifi-mode').value,
-        ssid: document.getElementById('wifi-ssid').value,
-        password: document.getElementById('wifi-password').value,
-        hotspot_ssid: document.getElementById('wifi-hotspot-ssid').value,
-        hotspot_password: document.getElementById('wifi-hotspot-password').value,
-        hotspot_security: document.getElementById('wifi-hotspot-security').value,
-        ipv4_method: document.getElementById('wifi-ipv4-method').value,
-        ipv4_address: document.getElementById('wifi-ipv4-address').value,
-        ipv6_method: document.getElementById('wifi-ipv6-method').value,
-        ipv6_address: document.getElementById('wifi-ipv6-address').value,
-      };
-      const res = await fetch('/api/wifi/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { alert('Failed to save Wi-Fi configuration'); return; }
-      clearDraft('wifi.');
-      await render();
-    }
-    async function applyWifi() { const ok = await postAction('/api/wifi/apply', 'Failed to apply Wi-Fi configuration'); if (ok) await render(); }
-    async function rescanWifi() { const ok = await postAction('/api/wifi/scan', 'Failed to rescan Wi-Fi'); if (ok) await render(); }
-    async function setWifiPower(state) { const ok = await postAction(`/api/wifi/power/${state}`, `Failed to turn Wi-Fi ${state}`); if (ok) await render(); }
-    async function applyLteApn() {
-      const payload = {
-        profile_id: document.getElementById('lte-apn-profile').value,
-        apn: document.getElementById('lte-apn-custom').value,
-        ipv4_method: document.getElementById('lte-ipv4-method').value,
-        ipv6_method: document.getElementById('lte-ipv6-method').value,
-        remember: document.getElementById('lte-apn-remember').value,
-      };
-      const res = await fetch('/api/lte/apn/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { alert('Failed to apply LTE APN settings'); return; }
-      await render();
-    }
-    async function applySuggestedApn(profileId) {
-      if (!profileId) return;
-      document.getElementById('lte-apn-profile').value = profileId;
-      document.getElementById('lte-apn-custom').value = '';
-      await applyLteApn();
-    }
-    async function toggleAutoApn(enabled) {
-      const res = await fetch('/api/lte/apn/auto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) });
-      if (!res.ok) { alert('Failed to update auto APN setting'); return; }
-      await render();
-    }
-    function updateApnFields() {
-      const select = document.getElementById('lte-apn-profile');
-      if (!select || !window.lteApnOptions) return;
-      const option = window.lteApnOptions.find(o => o.id === select.value);
-      const details = document.getElementById('lte-apn-details');
-      if (!option) {
-        if (details) details.textContent = 'No preset selected';
-        return;
-      }
-      document.getElementById('lte-apn-custom').value = option.apn;
-      document.getElementById('lte-ipv4-method').value = option.ipv4_method;
-      document.getElementById('lte-ipv6-method').value = option.ipv6_method;
-      if (details) details.textContent = `${option.provider} | APN: ${option.apn} | v4: ${option.ipv4_method} | v6: ${option.ipv6_method}`;
-    }
-    async function controlSamba(action) {
-      const res = await fetch('/api/samba/control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
-      if (!res.ok) { alert('Failed to control Samba'); return; }
-      await render();
-    }
-    async function setSambaPassword() {
-      const payload = { username: document.getElementById('samba-username').value, password: document.getElementById('samba-password').value };
-      const res = await fetch('/api/samba/user/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { alert('Failed to set Samba password'); return; }
-      alert('Samba password updated');
-      await render();
-    }
-    async function setSambaUserState(username, action) {
-      const res = await fetch('/api/samba/user/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, action }) });
-      if (!res.ok) { alert(`Failed to ${action} Samba user`); return; }
-      await render();
-    }
-    async function deleteSambaUser(username) {
-      const res = await fetch('/api/samba/user/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }) });
-      if (!res.ok) { alert('Failed to delete Samba user'); return; }
-      await render();
-    }
-    async function saveSambaShare() {
-      const payload = {
-        name: document.getElementById('samba-share-name').value,
-        path: document.getElementById('samba-share-path').value,
-        read_only: document.getElementById('samba-share-readonly').value,
-        guest_ok: document.getElementById('samba-share-guest').value,
-        valid_users: document.getElementById('samba-share-users').value,
-      };
-      const res = await fetch('/api/samba/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { alert('Failed to save Samba share'); return; }
-      await render();
-    }
-    async function deleteSambaShare(name) {
-      const res = await fetch('/api/samba/share/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-      if (!res.ok) { alert('Failed to delete Samba share'); return; }
-      await render();
-    }
-    async function controlPrinting(action) {
-      const res = await fetch('/api/printing/control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
-      if (!res.ok) { alert('Failed to control printing service'); return; }
-      await render();
-    }
-    async function setLinkState(name, state) { const ok = await postAction(`/api/interfaces/${name}/link/${state}`, `Failed to set ${name} ${state}`); if (ok) await render(); }
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-    }
-    function summarizeService(service) {
-      const parts = [];
-      if (service.summary) parts.push(service.summary);
-      else if (service.ports && service.ports.length) parts.push(service.ports.join(', '));
-      if (service.binds && service.binds.length) parts.push(service.binds.slice(0, 2).join(', '));
-      return parts.join(' | ') || 'Open details for more';
-    }
-    function renderDetailRows(details) {
-      return Object.entries(details).map(([label, value]) => `
-        <div class="metric">
-          <div class="label">${escapeHtml(label)}</div>
-          <div class="value small">${escapeHtml(value)}</div>
-        </div>
-      `).join('');
+    function fmtUptime(seconds) {
+      const mode = getUptimeMode();
+      if (mode === 'seconds') return `${seconds}s`;
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      if (mode === 'clock') return `${String(days * 24 + hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      return `${days}d ${hours}h ${minutes}m`;
     }
     function openServiceOverlay(id) {
       const service = appState.serviceDetails[id];
@@ -665,19 +798,78 @@
       document.getElementById('overlay-title').textContent = service.title || 'Service';
       document.getElementById('overlay-subtitle').textContent = service.subtitle || 'Details';
       document.getElementById('overlay-body').innerHTML = `
-        <div class="stat-grid">${renderDetailRows(service.details || {})}</div>
-        ${service.url ? `<div class="controls"><a class="service-link" href="${service.url}" target="_blank" rel="noreferrer">Open Service</a></div>` : ''}
+        <div class="stat-grid">${Object.entries(service.details || {}).map(([k, v]) => `<div class="metric"><div class="label">${escapeHtml(k)}</div><div class="value small">${escapeHtml(v)}</div></div>`).join('')}</div>
+        ${service.url ? `<div class="controls"><a class="chip" href="${service.url}" target="_blank" rel="noreferrer">Open service</a></div>` : ''}
         ${service.notes ? `<div class="hint">${escapeHtml(service.notes)}</div>` : ''}
       `;
       document.getElementById('service-overlay').classList.add('open');
     }
     function closeServiceOverlay() {
       document.getElementById('service-overlay').classList.remove('open');
+      updateRefreshState();
     }
-    function dismissOverlay(event) {
-      if (event.target.id === 'service-overlay') closeServiceOverlay();
+    function openRawProfile() {
+      openTextOverlay('Raw Connection Profile', 'Live cellular profile from NetworkManager', appState.rawProfile || '');
     }
-    function serviceCardMarkup(id, title, state, summary, details, url = '', subtitle = '', notes = '') {
+    function openTextOverlay(title, subtitle, text) {
+      document.getElementById('text-overlay-title').textContent = title || 'Details';
+      document.getElementById('text-overlay-subtitle').textContent = subtitle || 'Text view';
+      document.getElementById('text-overlay-body').textContent = text || 'No content available.';
+      document.getElementById('text-overlay').classList.add('open');
+      updateRefreshState();
+    }
+    function closeTextOverlay() {
+      document.getElementById('text-overlay').classList.remove('open');
+      updateRefreshState();
+    }
+    function dismissOverlay(event, id) {
+      if (event.target.id === id) {
+        document.getElementById(id).classList.remove('open');
+        updateRefreshState();
+      }
+    }
+    function closeCommandOverlay() {
+      document.getElementById('command-overlay').classList.remove('open');
+      appState.commandContext = null;
+      updateRefreshState();
+    }
+    async function openCommandOverlay(title, previewUrl, payload, runner, subtitle = 'Review and run') {
+      appState.commandContext = { title, previewUrl, runner };
+      document.getElementById('command-title').textContent = title;
+      document.getElementById('command-subtitle').textContent = subtitle;
+      document.getElementById('command-payload').value = JSON.stringify(payload || {}, null, 2);
+      document.getElementById('command-run').onclick = async () => {
+        try {
+          const parsed = JSON.parse(document.getElementById('command-payload').value || '{}');
+          await runner(parsed);
+          closeCommandOverlay();
+        } catch (err) {
+          alert(err.message || 'Failed to run command');
+        }
+      };
+      await refreshCommandPreview();
+      document.getElementById('command-overlay').classList.add('open');
+      updateRefreshState();
+    }
+    async function refreshCommandPreview() {
+      if (!appState.commandContext) return;
+      let payload = {};
+      try { payload = JSON.parse(document.getElementById('command-payload').value || '{}'); } catch (err) {
+        document.getElementById('command-preview').textContent = 'Payload JSON is invalid';
+        return;
+      }
+      try {
+        const preview = await fetchJSON(appState.commandContext.previewUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        document.getElementById('command-preview').textContent = (preview.commands || []).join('\n');
+      } catch (err) {
+        document.getElementById('command-preview').textContent = err.message || 'Unable to build command preview';
+      }
+    }
+    function serviceCardMarkup(id, title, state, summary, details, tags = [], url = '', subtitle = '', notes = '') {
       appState.serviceDetails[id] = { title, subtitle, details, url, notes };
       return `
         <div class="item service-card" onclick="openServiceOverlay('${id}')">
@@ -685,7 +877,8 @@
             <div class="item-title">${escapeHtml(title)}</div>
             <div class="badge">${escapeHtml(state)}</div>
           </div>
-          <div class="item-summary">${escapeHtml(summary)}</div>
+          <div class="muted">${escapeHtml(summary)}</div>
+          <div class="tag-row">${tags.map(tag => `<span class="mini-tag">${escapeHtml(tag)}</span>`).join('')}</div>
         </div>
       `;
     }
@@ -704,287 +897,859 @@
       if (service.name === 'NetAlertX' || hasPort('tcp/20211')) return `http://${host}:20211`;
       if (service.name === 'SSH' || hasPort('tcp/22')) return `ssh://${host}`;
       const tcpPort = ports.find(p => p.startsWith('tcp/'));
-      if (!tcpPort) return '';
-      return `${currentProtocol}//${host}:${tcpPort.split('/')[1]}`;
+      return tcpPort ? `${currentProtocol}//${host}:${tcpPort.split('/')[1]}` : '';
     }
-    function renderOverview(overview, services, serviceLan, lanProfile, activeSessions) {
-      const hw = overview.hardware || {};
-      const fmt = (value, suffix = '') => value === null || value === undefined || value === '' ? '-' : `${value}${suffix}`;
+    function piholeToggleMarkup(label, key, enabled, extra = '') {
       return `
-        <div class="stat-grid">
-          <div class="metric"><div class="label">Hostname</div><div class="value">${overview.hostname}</div></div>
-          <div class="metric"><div class="label">Uptime</div><div class="value">${overview.uptime_seconds}s</div></div>
-          <div class="metric"><div class="label">Services</div><div class="value">${services.length}</div></div>
-          <div class="metric"><div class="label">LAN Internet</div><div class="value small">Service ${serviceLan.internet_enabled ? 'ON' : 'OFF'} / Main ${lanProfile.internet_enabled ? 'ON' : 'OFF'}</div></div>
-          <div class="metric"><div class="label">CPU Temp</div><div class="value small">${fmt(hw.cpu_temp_c, 'C')}</div></div>
-          <div class="metric"><div class="label">NVMe Temp</div><div class="value small">${fmt(hw.nvme_temp_c, 'C')}</div></div>
-          <div class="metric"><div class="label">Input Voltage</div><div class="value small">${fmt(hw.input_voltage_v, 'V')}</div></div>
+        <div class="item">
+          <div class="switch-row">
+            <div>
+              <div class="item-title">${label}</div>
+              <div class="muted">${extra || 'Toggle Pi-hole usage for this network.'}</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" ${enabled ? 'checked' : ''} onchange="togglePiholeNetwork('${key}', this.checked)" />
+              <span class="slider"></span>
+            </label>
+          </div>
         </div>
-        <div class="route"><div class="label">IPv4 Default Route</div><div>${overview.uplink_ipv4.dev || '-'} via ${overview.uplink_ipv4.via || '-'} ${overview.uplink_ipv4.src ? `src ${overview.uplink_ipv4.src}` : ''}</div></div>
-        <div class="route"><div class="label">IPv6 Default Route</div><div>${overview.uplink_ipv6.dev || '-'} via ${overview.uplink_ipv6.via || '-'} ${overview.uplink_ipv6.src ? `src ${overview.uplink_ipv6.src}` : ''}</div></div>
-        <div class="route"><div class="label">Detected Uplinks</div><div>${(overview.uplinks || []).map(i => `${i.name} (${i.role}, ${i.state})`).join('<br>') || 'No active uplink detected'}</div></div>
-        <div class="route"><div class="label">Local LAN Ports</div><div>${(overview.local_lans || []).map(i => `${i.name}: ${(i.ipv4 || []).join(', ') || 'no IPv4'} | ${(i.ipv6 || []).join(', ') || 'no IPv6'} | ${i.state}`).join('<br>') || '-'}</div></div>
-        <div class="route"><div class="label">Hardware</div><div>CPU ${fmt(hw.cpu_temp_c, 'C')}<br>NVMe ${fmt(hw.nvme_temp_c, 'C')}<br>Input ${fmt(hw.input_voltage_v, 'V')}</div></div>
-        <div class="route"><div class="label">Active Sessions</div><div>${(activeSessions || []).length ? activeSessions.slice(0, 6).map(s => `${s.entry || s.service}: ${s.peer_address} -> ${s.local_address}:${s.local_port} (${s.interface || '-'})`).join('<br>') : 'No active sessions detected'}</div></div>`;
-    }
-    function renderLte(lte) {
-      if (!lte.available) return '<div class="muted">LTE modem not available</div>';
-      return `<div class="stat-grid">
-        <div class="metric"><div class="label">Operator</div><div class="value small">${lte.operator_name || '-'} (${lte.operator_mcc || '-'}${lte.operator_mnc || ''})</div></div>
-        <div class="metric"><div class="label">State</div><div class="value small">${lte.state || '-'}</div></div>
-        <div class="metric"><div class="label">Access Tech</div><div class="value small">${lte.access_tech || '-'}</div></div>
-        <div class="metric"><div class="label">Signal</div><div class="value small">${lte.signal_quality || '-'}</div></div>
-        <div class="metric"><div class="label">RSRP</div><div class="value small">${lte.rsrp || '-'}</div></div>
-        <div class="metric"><div class="label">RSRQ</div><div class="value small">${lte.rsrq || '-'}</div></div>
-        <div class="metric"><div class="label">SNR</div><div class="value small">${lte.snr || '-'}</div></div>
-        <div class="metric"><div class="label">RSSI</div><div class="value small">${lte.rssi || '-'}</div></div>
-      </div>`;
-    }
-    function renderLanSection(title, body) {
-      return `<div class="route"><div class="label">${title}</div>${body}</div>`;
-    }
-    function renderLanCard(profile, prefix, ethernetInterfaces) {
-      const isService = prefix === 'service-lan';
-      const roleOptions = ['isolated', 'internal', 'external'];
-      const ipv4ModeOptions = isService ? ['shared', 'disabled'] : ['shared', 'manual', 'disabled'];
-      const ipv6ModeOptions = isService ? ['routed', 'disabled'] : ['routed', 'manual', 'disabled'];
-      const roleId = `${prefix}-role`;
-      const ipv4ModeId = `${prefix}-ipv4-mode`;
-      const ipv4AddressId = isService ? `${prefix}-ipv4-gateway` : `${prefix}-ipv4-address`;
-      const ipv6ModeId = `${prefix}-ipv6-mode`;
-      const ipv6AddressId = isService ? `${prefix}-ipv6-gateway` : `${prefix}-ipv6-address`;
-      const dnsServersId = `${prefix}-dns-servers`;
-      const status = profile.target_interface_status || {};
-      const configPrefix = prefix.replace('-', '_');
-      const dnsServers = draftValue(`${prefix.replace('-', '_')}.dns_servers`, (profile.dns_servers || []).join(', '));
-      const internetButtons = isService
-        ? `<button onclick="applyServiceLan()">Apply Config</button><button class="secondary" onclick="restartServiceLan()">Restart Connection</button><button onclick="toggleServiceLanInternet('on')">Enable Internet</button><button class="secondary" onclick="toggleServiceLanInternet('off')">Disable Internet</button>`
-        : `<button onclick="applyMainLan()">Apply Config</button><button class="secondary" onclick="restartMainLan()">Restart Connection</button><button onclick="toggleMainLanInternet('on')">Enable Internet</button><button class="secondary" onclick="toggleMainLanInternet('off')">Disable Internet</button>`;
-      return `
-        <div class="stat-grid">
-          <div class="metric"><div class="label">Profile</div><div class="value small">${profile.name || '-'}</div></div>
-          <div class="metric"><div class="label">Role</div><div class="value small">${profile.role || '-'}</div></div>
-          <div class="metric"><div class="label">Target</div><div class="value small">${profile.target_interface || profile.interface || '-'}</div></div>
-          <div class="metric"><div class="label">State</div><div class="value small">${status.state || '-'}</div></div>
-          <div class="metric"><div class="label">Connection</div><div class="value small">${status.nm_connection || '-'}</div></div>
-          <div class="metric"><div class="label">Internet</div><div class="value small">${profile.internet_enabled ? 'ON' : 'OFF'}</div></div>
-          <div class="metric"><div class="label">IPv4</div><div class="value small">${profile.ipv4_mode || '-'}</div></div>
-          <div class="metric"><div class="label">IPv6</div><div class="value small">${profile.ipv6_mode || '-'}</div></div>
-          <div class="metric"><div class="label">Conflict</div><div class="value small">${profile.interface_conflict ? 'Same as other LAN' : 'None'}</div></div>
-        </div>
-        ${renderLanSection('Basic', `<div class="stat-grid" style="margin-top:10px;">
-          <div class="metric"><div class="label">Assigned Port</div><div class="value small">${profile.target_interface || profile.interface || '-'}</div></div>
-          <div class="metric"><div class="label">Available Ports</div><div class="value small">${(profile.available_interfaces || []).join(', ') || '-'}</div></div>
-          <div class="metric"><div class="label">Role</div><select id="${roleId}">${roleOptions.map(v => `<option value="${v}" ${draftValue(`${configPrefix}.role`, profile.role || 'internal') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">Current IPv4</div><div class="value small">${(status.ipv4 || []).join(', ') || '-'}</div></div>
-          <div class="metric"><div class="label">Current IPv6</div><div class="value small">${(status.ipv6 || []).join(', ') || '-'}</div></div>
-        </div>`)}
-        ${renderLanSection('Addressing', `<div class="stat-grid" style="margin-top:10px;">
-          <div class="metric"><div class="label">IPv4 Mode</div><select id="${ipv4ModeId}">${ipv4ModeOptions.map(v => `<option value="${v}" ${draftValue(`${configPrefix}.ipv4_mode`, profile.ipv4_mode || 'disabled') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">IPv4 Address</div><input id="${ipv4AddressId}" value="${draftValue(`${configPrefix}.${isService ? 'ipv4_gateway' : 'ipv4_address'}`, profile.gateway_ipv4 || profile.ipv4_address || '')}" /></div>
-          <div class="metric"><div class="label">IPv4 Block</div><input id="${prefix}-ipv4-subnet" value="${draftValue(`${configPrefix}.ipv4_subnet`, profile.ipv4_subnet || '')}" /></div>
-          <div class="metric"><div class="label">DHCP Range</div><input id="${prefix}-dhcp-range" value="${draftValue(`${configPrefix}.dhcp_range`, profile.dhcp_range_ipv4 || profile.dhcp_range || '')}" /></div>
-          <div class="metric"><div class="label">IPv6 Mode</div><select id="${ipv6ModeId}">${ipv6ModeOptions.map(v => `<option value="${v}" ${draftValue(`${configPrefix}.ipv6_mode`, profile.ipv6_mode || 'disabled') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">IPv6 Address</div><input id="${ipv6AddressId}" value="${draftValue(`${configPrefix}.${isService ? 'ipv6_gateway' : 'ipv6_address'}`, profile.gateway_ipv6 || profile.ipv6_address || '')}" /></div>
-          <div class="metric"><div class="label">IPv6 Prefix</div><input id="${prefix}-ipv6-prefix" value="${draftValue(`${configPrefix}.ipv6_prefix`, profile.prefix_ipv6 || profile.ipv6_prefix || '')}" /></div>
-        </div>`)}
-        ${renderLanSection('DNS', `<div class="stat-grid" style="margin-top:10px;">
-          <div class="metric"><div class="label">DNS Servers</div><input id="${dnsServersId}" value="${dnsServers}" /></div>
-          <div class="metric"><div class="label">DNS Mode</div><div class="value small">${profile.role_description || '-'}</div></div>
-          ${isService ? `<div class="metric"><div class="label">DHCP Listener</div><div class="value small">${profile.dhcp_listener_active ? 'UP' : 'DOWN'}</div></div><div class="metric"><div class="label">IPv6 RA</div><div class="value small">${profile.router_advertisements_active ? 'UP' : 'DOWN'}</div></div>` : `<div class="metric"><div class="label">Blocked By Portal</div><div class="value small">${profile.blocked_by_portal ? 'YES' : 'NO'}</div></div><div class="metric"><div class="label">Profile Name</div><div class="value small">${profile.name || '-'}</div></div>`}
-        </div>`)}
-        ${renderLanSection('Internet', `<div class="stat-grid" style="margin-top:10px;">
-          ${isService ? `<div class="metric"><div class="label">IPv4 Path</div><div class="value small">${profile.ipv4_path_ready ? 'Ready' : 'Not ready'}</div></div><div class="metric"><div class="label">IPv6 Path</div><div class="value small">${profile.ipv6_path_ready ? 'Ready' : 'Not ready'}</div></div><div class="metric"><div class="label">Firewall Block</div><div class="value small">${profile.firewall_block_active ? 'ON' : 'OFF'}</div></div><div class="metric"><div class="label">IPv4 Uplink</div><div class="value small">${profile.upstream_ipv4_default_route ? 'Present' : 'Missing'}</div></div>` : `<div class="metric"><div class="label">NetworkManager</div><div class="value small">${status.nm_state || '-'}</div></div><div class="metric"><div class="label">Desired DHCP Range</div><div class="value small">${profile.dhcp_range || '-'}</div></div><div class="metric"><div class="label">Desired DNS</div><div class="value small">${(profile.dns_servers || []).join(', ') || '-'}</div></div><div class="metric"><div class="label">IPv6 Prefix</div><div class="value small">${profile.ipv6_prefix || '-'}</div></div>`}
-        </div>
-        <div class="controls"><button onclick="${isService ? 'saveServiceLanConfig()' : 'saveMainLanConfig()'}">Save Config</button>${internetButtons}</div>`)}
-        <div class="hint">${(profile.notes || []).join(' ')}</div>
       `;
     }
-    async function render() {
-      const overview = await loadJSON('/api/overview');
-      const lte = await loadJSON('/api/lte');
-      const lteProfile = await loadJSON('/api/lte/profile');
-      const lteOptions = await loadJSON('/api/lte/apn/options');
-      const lteSuggest = await loadJSON('/api/lte/apn/suggest');
-      const lteAuto = await loadJSON('/api/lte/apn/auto');
-      const services = await loadJSON('/api/services');
-      const pihole = await loadJSON('/api/pihole/status');
-      const netalert = await loadJSON('/api/netalert/status');
-      const samba = await loadJSON('/api/samba/status');
-      const printing = await loadJSON('/api/printing/status');
-      const interfaces = await loadJSON('/api/interfaces');
-      const serviceLan = await loadJSON('/api/service-lan/status');
-      const serviceLanClients = await loadJSON('/api/service-lan/clients');
-      const wifiClients = await loadJSON('/api/wifi/clients');
-      const lanProfile = await loadJSON('/api/main-lan/status');
-      const activeSessions = await loadJSON('/api/active-sessions');
-      const wifi = await loadJSON('/api/wifi/status');
-
-      appState.lastSyncAt = Date.now();
-      appState.serviceDetails = {};
-      updateRefreshState();
-      window.lteApnOptions = lteOptions.options || [];
-
-      document.getElementById('overview').innerHTML = renderOverview(overview, services, serviceLan, lanProfile, activeSessions);
-      document.getElementById('lte').innerHTML = renderLte(lte);
-
-      document.getElementById('lte-apn').innerHTML = `
-        <div class="stat-grid">
-          <div class="metric"><div class="label">Current APN</div><div class="value small">${lteProfile.apn || '-'}</div></div>
-          <div class="metric"><div class="label">IPv4 Method</div><div class="value small">${lteProfile.ipv4_method || '-'}</div></div>
-          <div class="metric"><div class="label">IPv6 Method</div><div class="value small">${lteProfile.ipv6_method || '-'}</div></div>
-          <div class="metric"><div class="label">Auto Apply</div><div class="value small">${lteAuto.enabled ? 'ON' : 'OFF'}</div></div>
-          <div class="metric"><div class="label">Suggested</div><div class="value small">${(lteSuggest.suggested && lteSuggest.suggested.provider) ? `${lteSuggest.suggested.provider}` : '-'}</div></div>
-        </div>
-        <div class="route"><div class="label">Provider</div><div>${lteSuggest.operator.operator_name || '-'} (${lteSuggest.operator.mcc || '-'}${lteSuggest.operator.mnc || ''})</div></div>
-        <div class="route"><div class="label">Preset Details</div><div id="lte-apn-details">${lteSuggest.suggested.provider ? `${lteSuggest.suggested.provider} | APN: ${lteSuggest.suggested.apn} | v4: ${lteSuggest.suggested.ipv4_method} | v6: ${lteSuggest.suggested.ipv6_method}` : 'No suggested preset'}</div></div>
-        <div class="stat-grid" style="margin-top:10px;">
-          <div class="metric"><div class="label">Auto Apply</div><select id="lte-auto-apn" onchange="toggleAutoApn(this.value === 'true')">${['true', 'false'].map(v => `<option value="${v}" ${String(lteAuto.enabled) === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">Provider Preset</div><select id="lte-apn-profile" onchange="updateApnFields()"><option value="">Custom</option>${(lteOptions.options || []).map(option => `<option value="${option.id}" ${lteSuggest.suggested.id === option.id ? 'selected' : ''}>${option.country} / ${option.provider}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">Manual APN</div><input id="lte-apn-custom" value="${lteProfile.apn || lteSuggest.suggested.apn || ''}" /></div>
-          <div class="metric"><div class="label">IPv4 Method</div><select id="lte-ipv4-method">${['auto', 'disabled'].map(v => `<option value="${v}" ${(lteProfile.ipv4_method || lteSuggest.suggested.ipv4_method || 'auto') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">IPv6 Method</div><select id="lte-ipv6-method">${['auto', 'disabled'].map(v => `<option value="${v}" ${(lteProfile.ipv6_method || lteSuggest.suggested.ipv6_method || 'auto') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">Remember For SIM</div><select id="lte-apn-remember">${['true', 'false'].map(v => `<option value="${v}" ${v === 'true' ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-        </div>
-        <div class="controls">${lteSuggest.suggested.id ? `<button class="secondary" onclick="applySuggestedApn('${lteSuggest.suggested.id}')">Apply Suggested</button>` : ''}<button onclick="applyLteApn()">Apply APN</button></div>
-        ${lteSuggest.override && lteSuggest.override.apn ? `<div class="hint">Saved override for SIM: ${lteSuggest.override.apn} (${lteSuggest.override.ipv4_method}/${lteSuggest.override.ipv6_method})</div>` : ''}`;
-
-      const namedServiceCards = [];
-      const genericServiceCards = [];
-      namedServiceCards.push(serviceCardMarkup(
-        'svc-pihole',
-        'Pi-hole',
-        pihole.active ? 'Active' : 'Not reachable',
-        `${pihole.admin_reachable ? 'Admin reachable' : 'Admin offline'} | DNS ${(pihole.dns_binds || []).join(', ') || '-'} | Forwarding ${pihole.dns_forwarding_enabled ? 'enabled' : 'disabled'} | ${(pihole.active_networks || []).join(', ') || 'No active LAN binding'}`,
-        {
-          'Admin UI': `${pihole.admin_reachable ? 'reachable' : 'not reachable'} (${pihole.admin_status_code || '-'})`,
-          'Root URL': `${pihole.root_reachable ? 'reachable' : 'not reachable'} (${pihole.root_status_code || '-'})`,
-          'DNS listener': pihole.dns_listener_detected ? 'detected' : 'not detected',
-          'DNS binds': (pihole.dns_binds || []).join(', ') || '-',
-          'Forwarding': pihole.dns_forwarding_enabled ? `enabled via ${pihole.container_ip || 'Pi-hole container'}` : 'disabled',
-          'Active networks': (pihole.active_networks || []).join(', ') || '-',
-          'Portal mode': 'read-only health check',
-        },
-        `http://${window.location.hostname}:8081/admin/`,
-        'DNS filtering and local resolver',
-        (pihole.notes || []).join(' ')
-      ));
-      namedServiceCards.push(serviceCardMarkup(
-        'svc-netalert',
-        'NetAlertX',
-        netalert.detected ? 'Detected' : 'Not detected',
-        `${netalert.web_reachable ? `Web reachable (${netalert.status_code})` : 'Waiting for install'} | Port ${netalert.port}`,
-        {
-          'Detected': netalert.detected ? 'yes' : 'no',
-          'Web UI': netalert.web_reachable ? `reachable (${netalert.status_code})` : 'not reachable',
-          'Default port': netalert.port,
-          'Service name': netalert.name,
-        },
-        netalert.detected ? `http://${window.location.hostname}:${netalert.port}/` : '',
-        'Network discovery and presence',
-        netalert.detected ? 'The portal can open the NetAlertX UI directly.' : 'If you deploy NetAlertX later, the portal will pick it up automatically.'
-      ));
-      if (services.length) {
-        services
-          .filter(service => !['Pi-hole', 'NetAlertX'].includes(service.name))
-          .forEach(service => {
-          const url = getServiceUrl(service);
-          const markup = serviceCardMarkup(
-            `svc-${service.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
-            service.name,
-            service.active ? 'Active' : 'Detected',
-            summarizeService(service),
-            {
-              'Ports': (service.ports || []).join(', ') || service.type || '-',
-              'Bind addresses': (service.binds || []).join(', ') || '-',
-              'Type': service.type || 'listener',
-              'State': service.active ? 'active' : 'detected',
-            },
-            url,
-            'Listener details',
-            'Tap the service card to inspect ports, binds and quick-open actions.'
-          );
-          if ((service.name || '').startsWith('Port ')) genericServiceCards.push(markup);
-          else namedServiceCards.push(markup);
-        });
+    async function togglePiholeNetwork(key, enabled) {
+      const payload = {};
+      payload[key] = enabled;
+      const ok = await postAction('/api/pihole/networks', null, payload);
+      if (ok) await render();
+    }
+    async function restartSystem() {
+      if (!confirm('Restart the device now?')) return;
+      const ok = await postAction('/api/system/restart', 'Failed to restart the device');
+      if (ok) alert('Restart command sent.');
+    }
+    async function powerOffSystem() {
+      if (!confirm('Power off the device now?')) return;
+      const ok = await postAction('/api/system/poweroff', 'Failed to power off the device');
+      if (ok) alert('Power off command sent.');
+    }
+    async function saveMainLanConfigPreview() {
+      const payload = collectMainLanPayload();
+      await openCommandOverlay('Save Main LAN Config', '/api/main-lan/preview', payload, async (edited) => {
+        await fetchJSON('/api/main-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
+        clearDraft('main_lan.');
+        await render();
+      }, 'Edit the request if you want, then save the profile values.');
+    }
+    async function applyMainLanPreview() {
+      const payload = collectMainLanPayload();
+      await openCommandOverlay('Apply Main LAN', '/api/main-lan/preview', payload, async (edited) => {
+        await fetchJSON('/api/main-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
+        await fetchJSON('/api/main-lan/apply', { method: 'POST' });
+        clearDraft('main_lan.');
+        await render();
+      }, 'This saves your current draft and immediately applies it.');
+    }
+    async function saveServiceLanConfigPreview() {
+      const payload = collectServiceLanPayload();
+      await openCommandOverlay('Save Service LAN Config', '/api/service-lan/preview', payload, async (edited) => {
+        await fetchJSON('/api/service-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
+        clearDraft('service_lan.');
+        await render();
+      });
+    }
+    async function applyServiceLanPreview() {
+      const payload = collectServiceLanPayload();
+      await openCommandOverlay('Apply Service LAN', '/api/service-lan/preview', payload, async (edited) => {
+        await fetchJSON('/api/service-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
+        await fetchJSON('/api/service-lan/apply', { method: 'POST' });
+        clearDraft('service_lan.');
+        await render();
+      });
+    }
+    async function saveWifiConfigPreview() {
+      const payload = collectWifiPayload();
+      await openCommandOverlay('Save Wireless Config', '/api/wifi/preview', payload, async (edited) => {
+        await fetchJSON('/api/wifi/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
+        clearDraft('wifi.');
+        await render();
+      });
+    }
+    async function applyWifiPreview() {
+      const payload = collectWifiPayload();
+      await openCommandOverlay('Apply Wireless', '/api/wifi/preview', payload, async (edited) => {
+        await fetchJSON('/api/wifi/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
+        await fetchJSON('/api/wifi/apply', { method: 'POST' });
+        clearDraft('wifi.');
+        await render();
+      });
+    }
+    async function applyCellularApnPreview() {
+      const payload = collectApnPayload();
+      await openCommandOverlay('Apply Cellular APN', '/api/lte/apn/preview', payload, async (edited) => {
+        await fetchJSON('/api/lte/apn/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
+        await render();
+      }, 'This will modify the active cellular connection and reconnect it.');
+    }
+    async function setUplinkPreference(value) {
+      const ok = await postAction('/api/wifi/config', 'Failed to update uplink preference', { uplink_preference: value });
+      if (ok) await render();
+    }
+    async function toggleAutoApn(enabled) {
+      const ok = await postAction('/api/lte/apn/auto', 'Failed to update auto apply', { enabled });
+      if (ok) await render();
+    }
+    async function setLinkState(name, state) {
+      const ok = await postAction(`/api/interfaces/${name}/link/${state}`, `Failed to set ${name} ${state}`);
+      if (ok) await render();
+    }
+    async function toggleLinkState(name, enabled) {
+      const pendingKey = `link:${name}`;
+      if (isTogglePending(pendingKey)) return;
+      setTogglePending(pendingKey, true);
+      try {
+        await setLinkState(name, enabled ? 'up' : 'down');
+      } finally {
+        setTogglePending(pendingKey, false);
+        await render();
       }
-      document.getElementById('services').innerHTML = `
-        <div class="route">
-          <div class="label">Named Services</div>
-          <div class="service-list">${namedServiceCards.join('') || '<div class="muted">No named services detected</div>'}</div>
+    }
+    async function restartLan(endpoint) {
+      const ok = await postAction(endpoint, 'Failed to restart connection');
+      if (ok) await render();
+    }
+    async function toggleLanInternet(endpoint) {
+      const ok = await postAction(endpoint, 'Failed to change internet state');
+      if (ok) await render();
+    }
+    async function toggleLanInternetState(kind, enabled) {
+      const pendingKey = `internet:${kind}`;
+      if (isTogglePending(pendingKey)) return;
+      setTogglePending(pendingKey, true);
+      const endpoint = kind === 'main'
+        ? (enabled ? '/api/main-lan/internet/on' : '/api/main-lan/internet/off')
+        : (enabled ? '/api/service-lan/internet/on' : '/api/service-lan/internet/off');
+      try {
+        await toggleLanInternet(endpoint);
+      } finally {
+        setTogglePending(pendingKey, false);
+        await render();
+      }
+    }
+    async function rescanWifi() {
+      const ok = await postAction('/api/wifi/scan', 'Failed to rescan Wi-Fi');
+      if (ok) await render();
+    }
+    async function setWifiPower(state) {
+      const ok = await postAction(`/api/wifi/power/${state}`, `Failed to set Wi-Fi ${state}`);
+      if (ok) await render();
+    }
+    async function toggleWifiPower(enabled) {
+      const pendingKey = 'wifi:power';
+      if (isTogglePending(pendingKey)) return;
+      setTogglePending(pendingKey, true);
+      try {
+        await setWifiPower(enabled ? 'on' : 'off');
+      } finally {
+        setTogglePending(pendingKey, false);
+        await render();
+      }
+    }
+    async function controlSamba(action) {
+      const ok = await fetchJSON('/api/samba/control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+      if (ok) await render();
+    }
+    async function setSambaPassword() {
+      const payload = { username: document.getElementById('samba-username').value, password: document.getElementById('samba-password').value };
+      await fetchJSON('/api/samba/user/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await render();
+    }
+    async function setSambaUserState(username, action) {
+      await fetchJSON('/api/samba/user/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, action }) });
+      await render();
+    }
+    async function deleteSambaUser(username) {
+      await fetchJSON('/api/samba/user/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }) });
+      await render();
+    }
+    async function saveSambaShare() {
+      const payload = {
+        name: document.getElementById('samba-share-name').value,
+        path: document.getElementById('samba-share-path').value,
+        read_only: document.getElementById('samba-share-readonly').value,
+        guest_ok: document.getElementById('samba-share-guest').value,
+        valid_users: document.getElementById('samba-share-users').value,
+      };
+      await fetchJSON('/api/samba/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await render();
+    }
+    async function deleteSambaShare(name) {
+      await fetchJSON('/api/samba/share/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      await render();
+    }
+    async function controlPrinting(action) {
+      await fetchJSON('/api/printing/control', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+      await render();
+    }
+    async function installNetAlertX() {
+      if (!confirm('Install and start NetAlertX now?')) return;
+      await fetchJSON('/api/netalert/install', { method: 'POST' });
+      await render();
+    }
+    async function syncNetAlertX() {
+      await fetchJSON('/api/netalert/sync', { method: 'POST' });
+      await render();
+    }
+    async function runAtCommand() {
+      const command = document.getElementById('at-command').value.trim();
+      if (!command) return;
+      try {
+        const result = await fetchJSON('/api/lte/at', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command }) });
+        document.getElementById('at-output').textContent = [result.stdout, result.stderr].filter(Boolean).join('\n') || 'OK';
+      } catch (err) {
+        const message = String(err.message || 'AT command failed');
+        document.getElementById('at-output').textContent = message.includes('debug mode')
+          ? `${message}\n\nHost note: ModemManager must allow debug AT commands first. Regular status queries will still work without it.`
+          : message;
+      }
+    }
+    function collectMainLanPayload() {
+      const fieldValue = (id, fallback = '') => document.getElementById(id)?.value ?? fallback;
+      return {
+        role: fieldValue('main-lan-role'),
+        ipv4_mode: fieldValue('main-lan-ipv4-mode'),
+        ipv4_address: fieldValue('main-lan-ipv4-address'),
+        ipv4_subnet: fieldValue('main-lan-ipv4-subnet'),
+        dhcp_range: fieldValue('main-lan-dhcp-range'),
+        ipv6_mode: fieldValue('main-lan-ipv6-mode'),
+        ipv6_address: fieldValue('main-lan-ipv6-address'),
+        ipv6_prefix: fieldValue('main-lan-ipv6-prefix'),
+        dns_servers: fieldValue('main-lan-dns-servers'),
+        use_pihole_dns: document.getElementById('main-lan-pihole-toggle').checked ? 'true' : 'false',
+      };
+    }
+    function collectServiceLanPayload() {
+      const fieldValue = (id, fallback = '') => document.getElementById(id)?.value ?? fallback;
+      return {
+        role: fieldValue('service-lan-role'),
+        ipv4_mode: fieldValue('service-lan-ipv4-mode'),
+        ipv4_gateway: fieldValue('service-lan-ipv4-gateway'),
+        ipv4_subnet: fieldValue('service-lan-ipv4-subnet'),
+        dhcp_range: fieldValue('service-lan-dhcp-range'),
+        ipv6_mode: fieldValue('service-lan-ipv6-mode'),
+        ipv6_gateway: fieldValue('service-lan-ipv6-gateway'),
+        ipv6_prefix: fieldValue('service-lan-ipv6-prefix'),
+        dns_servers: fieldValue('service-lan-dns-servers'),
+        use_pihole_dns: document.getElementById('service-lan-pihole-toggle').checked ? 'true' : 'false',
+      };
+    }
+    function collectWifiPayload() {
+      const fieldValue = (id, fallback = '') => document.getElementById(id)?.value ?? fallback;
+      return {
+        mode: fieldValue('wifi-mode'),
+        client_trust_mode: fieldValue('wifi-client-trust-mode', 'normal'),
+        ssid: fieldValue('wifi-ssid'),
+        password: fieldValue('wifi-password'),
+        hotspot_ssid: fieldValue('wifi-hotspot-ssid'),
+        hotspot_password: fieldValue('wifi-hotspot-password'),
+        hotspot_security: fieldValue('wifi-hotspot-security', 'wpa2-personal'),
+        country: fieldValue('wifi-country', 'DE'),
+        band: fieldValue('wifi-band', '2.4ghz'),
+        channel: fieldValue('wifi-channel', 'auto'),
+        uplink_preference: fieldValue('wifi-uplink-preference', (((window.appState || {}).wifi || {}).config || {}).uplink_preference || 'prefer-lte'),
+        ipv4_method: fieldValue('wifi-ipv4-method'),
+        ipv4_address: fieldValue('wifi-ipv4-address'),
+        ipv6_method: fieldValue('wifi-ipv6-method'),
+        ipv6_address: fieldValue('wifi-ipv6-address'),
+        use_pihole_dns: document.getElementById('wifi-pihole-toggle').checked ? 'true' : 'false',
+      };
+    }
+    function collectApnPayload() {
+      return {
+        profile_id: document.getElementById('cellular-apn-profile').value,
+        apn: document.getElementById('cellular-apn-custom').value,
+        ipv4_method: document.getElementById('cellular-ipv4-method').value,
+        ipv6_method: document.getElementById('cellular-ipv6-method').value,
+        remember: document.getElementById('cellular-apn-remember').checked ? 'true' : 'false',
+      };
+    }
+    function renderOverview(overview, systemStats, activeSessions) {
+      const hw = overview.hardware || {};
+      const mem = systemStats.memory || {};
+      const load = systemStats.load || {};
+      const docker = systemStats.docker || {};
+      return `
+        <div class="stat-grid">
+          <div class="metric"><div class="label">Hostname</div><div class="value">${escapeHtml(overview.hostname)}</div></div>
+          <div class="metric" onclick="cycleUptimeMode()" style="cursor:pointer;"><div class="label">Uptime</div><div class="value">${fmtUptime(overview.uptime_seconds || 0)}</div><div class="hint">Click to cycle format</div></div>
+          <div class="metric"><div class="label">CPU Temp</div><div class="value small">${hw.cpu_temp_c ?? '-'}</div></div>
+          <div class="metric"><div class="label">NVMe Temp</div><div class="value small">${hw.nvme_temp_c ?? '-'}</div></div>
+          <div class="metric"><div class="label">Input Voltage</div><div class="value small">${hw.input_voltage_v ?? '-'}</div></div>
+          <div class="metric"><div class="label">Memory Used</div><div class="value small">${mem.used_mb ?? '-'} MB</div></div>
+          <div class="metric"><div class="label">Memory Percent</div><div class="value small">${mem.used_percent ?? '-'}%</div></div>
+          <div class="metric"><div class="label">Load</div><div class="value small">${load.load_1 || '-'} / ${load.load_5 || '-'} / ${load.load_15 || '-'}</div></div>
+          <div class="metric"><div class="label">Docker Running</div><div class="value">${docker.running ?? 0}</div></div>
+        </div>
+        <div class="route"><div class="label">IPv4 Default Route</div><div>${escapeHtml((overview.uplink_ipv4 || {}).dev || '-')} via ${escapeHtml((overview.uplink_ipv4 || {}).via || '-')} ${escapeHtml((overview.uplink_ipv4 || {}).src || '')}</div></div>
+        <div class="route"><div class="label">IPv6 Default Route</div><div>${escapeHtml((overview.uplink_ipv6 || {}).dev || '-')} via ${escapeHtml((overview.uplink_ipv6 || {}).via || '-')} ${escapeHtml((overview.uplink_ipv6 || {}).src || '')}</div></div>
+        <div class="route"><div class="label">Detected Uplinks</div><div>${(overview.uplinks || []).map(i => `${escapeHtml(i.name)} (${escapeHtml(i.role)}, ${escapeHtml(i.state)})`).join('<br>') || 'No active uplink detected'}</div></div>
+        <div class="route"><div class="label">Local LAN Ports</div><div>${(overview.local_lans || []).map(i => `${escapeHtml(i.name)}: ${(i.ipv4 || []).join(', ') || 'no IPv4'} | ${(i.ipv6 || []).join(', ') || 'no IPv6'} | ${escapeHtml(i.state)}`).join('<br>') || '-'}</div></div>
+        <div class="route"><div class="label">Dashboard Sessions</div><div>${(activeSessions || []).slice(0, 5).map(s => `${escapeHtml(s.entry || s.service)}: ${escapeHtml(s.peer_address)} -> ${escapeHtml(s.local_address)}:${escapeHtml(s.local_port)}`).join('<br>') || 'No active sessions detected'}</div></div>
+      `;
+    }
+    function renderDockerBrief(systemStats) {
+      const docker = systemStats.docker || {};
+      if (!docker.available) return '<div class="muted">Docker not available</div>';
+      return (docker.containers || []).length ? `<div class="item-list">${docker.containers.slice(0, 8).map(c => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(c.name)}</div><div class="badge">${escapeHtml(c.status)}</div></div><div class="muted">${escapeHtml(c.image)}</div></div>`).join('')}</div>` : '<div class="muted">No containers running</div>';
+    }
+    function renderSessions(sessions) {
+      const deduped = [];
+      const seen = new Set();
+      (sessions || []).forEach(session => {
+        const key = [
+          session.entry || session.service || '',
+          session.interface || '',
+          session.peer_address || '',
+          session.family || '',
+        ].join('|');
+        if (seen.has(key)) return;
+        seen.add(key);
+        deduped.push(session);
+      });
+      return deduped.length ? `<div class="item-list">${deduped.slice(0, 8).map(s => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(s.entry || s.service)}</div><div class="badge">${escapeHtml(s.interface || '-')}</div></div><div class="muted">${escapeHtml(s.peer_address)}:${escapeHtml(s.peer_port)} -> ${escapeHtml(s.local_address)}:${escapeHtml(s.local_port)}</div></div>`).join('')}</div>` : '<div class="muted">No active sessions detected</div>';
+    }
+    function sessionCount(sessions) {
+      const seen = new Set();
+      (sessions || []).forEach(session => {
+        const key = [
+          session.entry || session.service || '',
+          session.interface || '',
+          session.peer_address || '',
+          session.family || '',
+        ].join('|');
+        seen.add(key);
+      });
+      return seen.size;
+    }
+    function sessionCountClass(count) {
+      if (count <= 0) return 'badge session-count idle';
+      if (count <= 3) return 'badge session-count low';
+      return 'badge session-count busy';
+    }
+    function ipv4ModeLabel(mode) {
+      if (mode === 'auto') return 'Auto';
+      if (mode === 'shared') return 'DHCP';
+      if (mode === 'manual') return 'Static';
+      return 'Disabled';
+    }
+    function ipv6ModeLabel(mode) {
+      if (mode === 'auto') return 'Auto';
+      if (mode === 'shared') return 'DHCP / RA';
+      if (mode === 'routed') return 'RA / Routed';
+      if (mode === 'manual') return 'Static';
+      return 'Disabled';
+    }
+    function wifiBandLabel(mode) {
+      if (mode === '2.4ghz') return '2.4 GHz';
+      if (mode === '5ghz') return '5 GHz';
+      return '2.4 GHz';
+    }
+    function wifiHotspotIpv6Label(mode) {
+      if (mode === 'shared') return 'DHCP / RA';
+      if (mode === 'manual') return 'Routed';
+      return 'Disabled';
+    }
+    function wifiChannelOptions(band) {
+      const channels24 = ['auto','1','6','11'];
+      const channels5 = ['auto','36','40','44','48','100','104','108','112','116','120','124','128','132','136','140'];
+      if (band === '2.4ghz') return channels24;
+      if (band === '5ghz') return channels5;
+      return channels24;
+    }
+    function setLanStackDisabled(kind) {
+      appState.drafts[`${kind}_lan.ipv4_mode`] = 'disabled';
+      appState.drafts[`${kind}_lan.ipv6_mode`] = 'disabled';
+      updateRefreshState();
+      render();
+    }
+    function lanRoleExplanation(role) {
+      if (role === 'isolated') {
+        return `
+          <div class="item">
+            <div class="item-title">Isolated</div>
+            <div class="muted">Internet works for clients, but access to Main LAN, Wi-Fi, Tailscale, and most device services is blocked.</div>
+          </div>
+        `;
+      }
+      if (role === 'external') {
+        return `
+          <div class="item">
+            <div class="item-title">External</div>
+            <div class="muted">Clients get internet and stay away from Main LAN. Tailscale-connected devices can still reach the router and this external segment for management.</div>
+          </div>
+        `;
+      }
+      return `
+        <div class="item">
+          <div class="item-title">Internal</div>
+          <div class="muted">Trusted LAN. Clients can use local services, management pages, and other internal networks.</div>
+        </div>
+      `;
+    }
+    function renderLanCard(kind, profile) {
+      const prefix = kind === 'main' ? 'main-lan' : 'service-lan';
+      const applyFn = kind === 'main' ? 'applyMainLanPreview()' : 'applyServiceLanPreview()';
+      const restartFn = kind === 'main' ? `restartLan('/api/main-lan/restart')` : `restartLan('/api/service-lan/restart')`;
+      const isServiceLan = kind === 'service';
+      const ipv4Address = kind === 'main' ? (profile.ipv4_address || '') : (profile.gateway_ipv4 || '');
+      const ipv6Address = kind === 'main' ? (profile.ipv6_address || '') : (profile.gateway_ipv6 || '');
+      const internetPending = isTogglePending(`internet:${kind}`);
+      const ipv4Mode = draftValue(`${kind}_lan.ipv4_mode`, profile.ipv4_mode || 'shared');
+      const ipv6Mode = draftValue(`${kind}_lan.ipv6_mode`, profile.ipv6_mode || 'disabled');
+      const role = draftValue(`${kind}_lan.role`, profile.role || 'internal');
+      const ipv4Summary = ipv4Mode === 'shared' ? 'DHCP ON' : ipv4Mode === 'manual' ? 'Static IPv4' : 'IPv4 Disabled';
+      const ipv6Summary = ipv6Mode === 'routed' ? 'RA ON' : ipv6Mode === 'manual' ? 'Static IPv6' : 'IPv6 Disabled';
+      const liveIpv4Summary = kind === 'main'
+        ? (profile.connection?.['ipv4.method'] === 'shared'
+            ? 'DHCP ON'
+            : profile.connection?.['ipv4.method'] === 'manual'
+              ? 'Static IPv4'
+              : 'IPv4 Disabled')
+        : (profile.dhcp_listener_active ? 'DHCP ON' : 'DHCP OFF');
+      const liveIpv6Summary = kind === 'main'
+        ? (profile.connection?.['ipv6.method'] === 'disabled'
+            ? 'IPv6 Disabled'
+            : 'Static / Routed IPv6')
+        : (profile.router_advertisements_active ? 'RA ON' : 'RA OFF');
+      const liveAddressing = `${liveIpv4Summary} / ${liveIpv6Summary}`;
+      const desiredAddressing = `${ipv4Summary} / ${ipv6Summary}`;
+      return `
+        <div class="stat-grid">
+          <div class="metric"><div class="label">Assigned Port</div><div class="value small">${escapeHtml(profile.target_interface || profile.interface || '-')}</div></div>
+          <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(((profile.target_interface_status || {}).state) || '-')}</div></div>
+          <div class="metric"><div class="label">Internet</div><div class="switch-row" style="margin-top:8px;"><div class="muted">${internetPending ? 'Working...' : (profile.internet_enabled ? 'Enabled' : 'Disabled')}</div><label class="switch ${internetPending ? 'busy' : ''}"><input type="checkbox" ${profile.internet_enabled ? 'checked' : ''} ${internetPending ? 'disabled' : ''} onchange="toggleLanInternetState('${kind}', this.checked)"><span class="slider"></span></label></div></div>
+          <div class="metric"><div class="label">Pi-hole</div><div class="value small">${profile.use_pihole_dns ? 'ON' : 'OFF'}</div></div>
         </div>
         <div class="route">
-          <div class="label">Unnamed Ports</div>
-          <div class="service-list">${genericServiceCards.join('') || '<div class="muted">No generic port-only listeners detected</div>'}</div>
-        </div>`;
-
-      document.getElementById('samba-panel').innerHTML = `
+          <div class="label">Basic</div>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">Role</div><select id="${prefix}-role">${['isolated', 'internal', 'external'].map(v => `<option value="${v}" ${role === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+            <div class="metric"><div class="label">Role Summary</div><div class="value small">${escapeHtml(profile.role_description || '-')}</div></div>
+            <div class="metric"><div class="label">Desired State</div><div class="value small">${escapeHtml(desiredAddressing)}</div></div>
+            <div class="metric"><div class="label">Live State</div><div class="value small">${escapeHtml(liveAddressing)}</div></div>
+          </div>
+        </div>
+        <div class="route">
+          <div class="label">Role Behavior</div>
+          <div class="item-list" style="margin-top:10px;">${lanRoleExplanation(role)}</div>
+        </div>
+        <div class="route">
+          <div class="label">Addressing</div>
+          <div class="controls"><button class="secondary" onclick="setLanStackDisabled('${kind}')">Disable IPv4 + IPv6</button></div>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">IPv4 Mode</div><select id="${prefix}-ipv4-mode">${(isServiceLan ? ['shared','disabled'] : ['shared','manual','disabled']).map(v => `<option value="${v}" ${ipv4Mode === v ? 'selected' : ''}>${ipv4ModeLabel(v)}</option>`).join('')}</select></div>
+            ${ipv4Mode !== 'disabled' ? `<div class="metric"><div class="label">${kind === 'main' ? 'IPv4 Address' : 'IPv4 Gateway'}</div><input id="${prefix}-${kind === 'main' ? 'ipv4-address' : 'ipv4-gateway'}" value="${draftValue(`${kind}_lan.${kind === 'main' ? 'ipv4_address' : 'ipv4_gateway'}`, ipv4Address)}" /></div>` : ''}
+            ${ipv4Mode !== 'disabled' ? `<div class="metric"><div class="label">IPv4 Block</div><input id="${prefix}-ipv4-subnet" value="${draftValue(`${kind}_lan.ipv4_subnet`, profile.ipv4_subnet || '')}" /></div>` : ''}
+            ${ipv4Mode === 'shared' ? `<div class="metric"><div class="label">DHCP Range</div><input id="${prefix}-dhcp-range" value="${draftValue(`${kind}_lan.dhcp_range`, profile.dhcp_range || profile.dhcp_range_ipv4 || '')}" /></div>` : ''}
+            <div class="metric"><div class="label">IPv6 Mode</div><select id="${prefix}-ipv6-mode">${(isServiceLan ? ['routed','disabled'] : ['routed','manual','disabled']).map(v => `<option value="${v}" ${ipv6Mode === v ? 'selected' : ''}>${ipv6ModeLabel(v)}</option>`).join('')}</select></div>
+            ${ipv6Mode !== 'disabled' ? `<div class="metric"><div class="label">${kind === 'main' ? 'IPv6 Address' : 'IPv6 Gateway'}</div><input id="${prefix}-${kind === 'main' ? 'ipv6-address' : 'ipv6-gateway'}" value="${draftValue(`${kind}_lan.${kind === 'main' ? 'ipv6_address' : 'ipv6_gateway'}`, ipv6Address)}" /></div>` : ''}
+            ${ipv6Mode !== 'disabled' ? `<div class="metric"><div class="label">IPv6 Prefix</div><input id="${prefix}-ipv6-prefix" value="${draftValue(`${kind}_lan.ipv6_prefix`, profile.ipv6_prefix || profile.prefix_ipv6 || '')}" /></div>` : ''}
+          </div>
+        </div>
+        <div class="route">
+          <div class="label">DNS</div>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">DNS Servers</div><input id="${prefix}-dns-servers" value="${draftValue(`${kind}_lan.dns_servers`, (profile.dns_servers || []).join(', '))}" /></div>
+            <div class="metric"><div class="label">Pi-hole Policy</div>
+              <div class="switch-row" style="margin-top:8px;">
+                <div class="muted">Use Pi-hole on this LAN</div>
+                <label class="switch"><input id="${prefix}-pihole-toggle" type="checkbox" ${profile.use_pihole_dns ? 'checked' : ''}><span class="slider"></span></label>
+              </div>
+            </div>
+            <div class="metric"><div class="label">Desired DHCP / RA</div><div class="value small">${escapeHtml(desiredAddressing)}</div></div>
+            <div class="metric"><div class="label">Live DHCP / RA</div><div class="value small">${escapeHtml(liveAddressing)}</div></div>
+            <div class="metric"><div class="label">Current DNS Flow</div><div class="value small">${escapeHtml((profile.dns_servers || []).join(', ') || '-')}</div></div>
+          </div>
+        </div>
+        <div class="controls">
+          <button onclick="${applyFn}">Apply Config</button>
+          <button class="secondary" onclick="${restartFn}">Restart Connection</button>
+        </div>
+        <div class="hint">${(profile.notes || []).filter(note => !note.toLowerCase().includes('plugging in a usb ethernet adapter')).join(' ')}</div>
+      `;
+    }
+    function categorizeInterfaces(interfaces) {
+      return {
+        uplinks: interfaces.filter(i => i.role === 'cellular' || i.role === 'overlay'),
+        lan: interfaces.filter(i => i.physical && i.role === 'ethernet'),
+        wireless: interfaces.filter(i => i.role === 'wifi'),
+        virtual: interfaces.filter(i => !i.physical && !['overlay'].includes(i.role)),
+      };
+    }
+    function renderInterfaceGroup(title, items) {
+      return `<div class="route"><div class="label">${escapeHtml(title)}</div><div class="item-list" style="margin-top:10px;">${items.length ? items.map(i => {
+        const linkPending = isTogglePending(`link:${i.name}`);
+        const linkEnabled = ['up', 'unknown'].includes(String(i.state || '').toLowerCase());
+        return `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(i.name)}</div><div class="badge">${escapeHtml(i.state)}</div></div><div class="muted">Role: ${escapeHtml(i.role || '-')} | MAC: ${escapeHtml(i.mac || '-')} | MTU: ${escapeHtml(i.mtu || '-')}</div><div class="muted">IPv4: ${(i.ipv4 || []).join(', ') || '-'} </div><div class="muted">IPv6: ${(i.ipv6 || []).join(', ') || '-'} </div>${i.physical ? `<div class="route"><div class="switch-row"><div><div class="label">Link State</div><div class="muted">${linkPending ? 'Working...' : escapeHtml(i.state || '-')}</div></div><label class="switch ${linkPending ? 'busy' : ''}"><input type="checkbox" ${linkEnabled ? 'checked' : ''} ${linkPending ? 'disabled' : ''} onchange="toggleLinkState('${i.name}', this.checked)"><span class="slider"></span></label></div></div>` : ''}</div>`;
+      }).join('') : '<div class="muted">No interfaces in this group</div>'}</div></div>`;
+    }
+    function renderWireless(wifi, interfaces, wifiClients, piholeNetworks, overview) {
+      const wifiPowerPending = isTogglePending('wifi:power');
+      const wifiRadioOn = String((wifi.device || {}).wifi_radio || '').toLowerCase() === 'enabled';
+      const wifiMode = draftValue('wifi.mode', wifi.config.mode);
+      const wifiIpv4Method = draftValue('wifi.ipv4_method', wifi.config.ipv4_method || 'auto');
+      const wifiIpv6Method = draftValue('wifi.ipv6_method', wifi.config.ipv6_method || 'disabled');
+      const wifiClientTrustMode = draftValue('wifi.client_trust_mode', wifi.config.client_trust_mode || 'normal');
+      const wifiUplinkPreference = draftValue('wifi.uplink_preference', wifi.config.uplink_preference || 'prefer-lte');
+      const wifiBand = draftValue('wifi.band', wifi.config.band || '2.4ghz');
+      const wifiChannel = draftValue('wifi.channel', wifi.config.channel || 'auto');
+      const hotspotSecurity = draftValue('wifi.hotspot_security', wifi.config.hotspot_security || 'wpa2-personal');
+      const channelOptions = wifiChannelOptions(wifiBand);
+      const defaultDev = ((overview || {}).uplink_ipv4 || {}).dev || ((overview || {}).uplink_ipv6 || {}).dev || '';
+      const wifiIsDefaultUplink = defaultDev && defaultDev === wifi.interface;
+      return `
+        <div class="stat-grid">
+          <div class="metric"><div class="label">Interface</div><div class="value small">${escapeHtml(wifi.interface)}</div></div>
+          <div class="metric"><div class="label">Active Mode</div><div class="value small">${escapeHtml((wifi.active || {}).mode || '-')}</div></div>
+          <div class="metric"><div class="label">Security</div><div class="value small">${escapeHtml((wifi.active || {}).security || wifi.config.hotspot_security || '-')}</div></div>
+          <div class="metric"><div class="label">Radio</div><div class="switch-row" style="margin-top:8px;"><div class="muted">${wifiPowerPending ? 'Working...' : escapeHtml((wifi.device || {}).wifi_radio || '-')}</div><label class="switch ${wifiPowerPending ? 'busy' : ''}"><input type="checkbox" ${wifiRadioOn ? 'checked' : ''} ${wifiPowerPending ? 'disabled' : ''} onchange="toggleWifiPower(this.checked)"><span class="slider"></span></label></div></div>
+        </div>
+        <div class="route">
+          <div class="label">Live Wireless State</div>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">Connection</div><div class="value small">${escapeHtml((wifi.active || {}).connection || (wifi.device || {}).nm_connection || '-')}</div></div>
+            <div class="metric"><div class="label">Default Uplink</div><div class="value small">${wifiIsDefaultUplink ? 'Yes' : 'No'}</div></div>
+            <div class="metric"><div class="label">SSID</div><div class="value small">${escapeHtml((wifi.active || {}).ssid || '-')}</div></div>
+            <div class="metric"><div class="label">Country</div><div class="value small">${escapeHtml(wifi.country || '-')}</div></div>
+            <div class="metric"><div class="label">Band</div><div class="value small">${escapeHtml((wifi.active || {}).band || wifiBandLabel(wifi.config.band || '2.4ghz'))}</div></div>
+            <div class="metric"><div class="label">Channel</div><div class="value small">${escapeHtml((wifi.active || {}).channel || wifi.config.channel || '-')}</div></div>
+            <div class="metric"><div class="label">IPv4</div><div class="value small">${escapeHtml(((wifi.device || {}).ipv4 || []).join(', ') || '-')}</div></div>
+            <div class="metric"><div class="label">IPv6</div><div class="value small">${escapeHtml(((wifi.device || {}).ipv6 || []).join(', ') || '-')}</div></div>
+          </div>
+          ${wifiMode === 'client' ? `<div class="hint">${wifiIsDefaultUplink ? 'Wi-Fi client is currently the active default uplink.' : `Wi-Fi client is connected, but the active default uplink is ${escapeHtml(defaultDev || 'not set')}.`}</div>` : ''}
+        </div>
+        <div class="route">
+          <div class="label">Config</div>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">Mode</div><select id="wifi-mode">${['client','hotspot'].map(v => `<option value="${v}" ${wifiMode === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+            <div class="metric"><div class="label">Country</div><select id="wifi-country">${['DE','TR','US','GB','NL','FR'].map(v => `<option value="${v}" ${draftValue('wifi.country', wifi.config.country || wifi.country || 'DE') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+            <div class="metric"><div class="label">Client Trust</div><select id="wifi-client-trust-mode" ${wifiMode === 'client' ? '' : 'disabled'}>${[{id:'normal',label:'Normal'},{id:'isolated',label:'Isolated'}].map(v => `<option value="${v.id}" ${wifiClientTrustMode === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+            <div class="metric"><div class="label">Uplink Preference</div><select id="wifi-uplink-preference" ${wifiMode === 'client' ? '' : 'disabled'} onchange="setUplinkPreference(this.value)">${[{id:'prefer-lte',label:'Prefer Cellular'},{id:'prefer-wifi',label:'Prefer Wi-Fi'},{id:'failover-only',label:'Wi-Fi Failover Only'}].map(v => `<option value="${v.id}" ${wifiUplinkPreference === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+            ${wifiMode === 'client' ? `<div class="metric"><div class="label">Client SSID</div><input id="wifi-ssid" value="${draftValue('wifi.ssid', wifi.config.ssid || '')}" /></div>` : ''}
+            ${wifiMode === 'client' ? `<div class="metric"><div class="label">Client Password</div><input id="wifi-password" type="password" value="${draftValue('wifi.password', '')}" /></div>` : ''}
+            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Hotspot SSID</div><input id="wifi-hotspot-ssid" value="${draftValue('wifi.hotspot_ssid', wifi.config.hotspot_ssid || '')}" /></div>` : ''}
+            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Hotspot Password</div><input id="wifi-hotspot-password" type="password" value="${draftValue('wifi.hotspot_password', '')}" placeholder="Leave empty to keep current saved password" /></div>` : ''}
+            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Security Profile</div><select id="wifi-hotspot-security">${[{id:'wpa3-personal',label:'WPA3-Personal'},{id:'wpa2-personal',label:'WPA2-Personal'},{id:'open',label:'Open'}].map(v => `<option value="${v.id}" ${hotspotSecurity === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>` : ''}
+            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Band</div><select id="wifi-band">${[{id:'2.4ghz',label:'2.4 GHz'},{id:'5ghz',label:'5 GHz'}].map(v => `<option value="${v.id}" ${wifiBand === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>` : ''}
+            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Channel</div><select id="wifi-channel">${channelOptions.map(v => `<option value="${v}" ${wifiChannel === v ? 'selected' : ''}>${v === 'auto' ? 'Auto' : `Channel ${v}`}</option>`).join('')}</select></div>` : ''}
+            <div class="metric"><div class="label">IPv4 Mode</div><select id="wifi-ipv4-method">${(wifiMode === 'hotspot' ? ['shared','manual','disabled'] : ['auto','manual','disabled']).map(v => `<option value="${v}" ${wifiIpv4Method === v ? 'selected' : ''}>${ipv4ModeLabel(v)}</option>`).join('')}</select></div>
+            ${wifiIpv4Method === 'manual' ? `<div class="metric"><div class="label">IPv4 Address</div><input id="wifi-ipv4-address" value="${draftValue('wifi.ipv4_address', wifi.config.ipv4_address || '')}" /></div>` : ''}
+            <div class="metric"><div class="label">IPv6 Mode</div><select id="wifi-ipv6-method">${(wifiMode === 'hotspot' ? ['shared','manual','disabled'] : ['auto','manual','disabled']).map(v => `<option value="${v}" ${wifiIpv6Method === v ? 'selected' : ''}>${wifiMode === 'hotspot' ? wifiHotspotIpv6Label(v) : ipv6ModeLabel(v)}</option>`).join('')}</select></div>
+            ${wifiIpv6Method === 'manual' ? `<div class="metric"><div class="label">IPv6 Address / Prefix</div><input id="wifi-ipv6-address" value="${draftValue('wifi.ipv6_address', wifi.config.ipv6_address || '')}" placeholder="fd42:42::1/64" /></div>` : ''}
+            <div class="metric"><div class="label">Pi-hole</div><div class="switch-row" style="margin-top:8px;"><div class="muted">Use Pi-hole on Wi-Fi</div><label class="switch"><input id="wifi-pihole-toggle" type="checkbox" ${piholeNetworks.wifi ? 'checked' : ''}><span class="slider"></span></label></div></div>
+          </div>
+          <div class="hint">${wifiMode === 'client' ? (wifiClientTrustMode === 'isolated' ? 'Isolated client mode blocks inbound access from the upstream Wi-Fi and stops that uplink from reaching local LAN segments. It helps on hotel and public Wi-Fi, but it is not a VPN and does not by itself eliminate upstream MITM risk.' : 'Normal client mode behaves like a regular Wi-Fi client.') : 'Client Trust only applies in client mode. Switch Mode to client if you want to tune upstream Wi-Fi behavior.'}</div>
+          <div class="controls"><button onclick="applyWifiPreview()">Apply Config</button><button class="secondary" onclick="rescanWifi()">Rescan</button></div>
+        </div>
+        <div class="route"><div class="label">Connected Wi-Fi Clients</div><div class="item-list" style="margin-top:10px;">${(wifiClients || []).length ? wifiClients.map(c => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(c.hostname || c.mac || 'Client')}</div><div class="badge">${escapeHtml(c.interface || '-')}</div></div><div class="muted">Primary IP: ${escapeHtml(c.ip)} | MAC: ${escapeHtml(c.mac || '-')} | ${escapeHtml(c.state || '-')}</div>${c.secondary_ips ? `<div class="muted">Extra IPs: ${escapeHtml(c.secondary_ips)}</div>` : ''}</div>`).join('') : '<div class="muted">No Wi-Fi clients detected</div>'}</div></div>
+        <div class="route"><div class="label">Visible Wi-Fi Networks</div><div class="item-list" style="margin-top:10px;">${(wifi.scan || []).length ? wifi.scan.map(n => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(n.ssid)}</div><div class="badge">${escapeHtml(String(n.signal))}%</div></div><div class="muted">Channel ${escapeHtml(n.channel || '-')} | ${escapeHtml(n.security || 'open')} ${n.in_use ? '| connected' : ''}</div></div>`).join('') : '<div class="muted">No scan results</div>'}</div></div>
+        <div class="route"><div class="label">Wi-Fi Capabilities</div><div>${(wifi.capabilities || {}).band_2ghz === 'yes' ? '2.4 GHz ' : ''}${(wifi.capabilities || {}).band_5ghz === 'yes' ? '| 5 GHz ' : ''}${(wifi.capabilities || {}).ap === 'yes' ? '| AP mode ' : ''}${(wifi.capabilities || {}).wpa2 === 'yes' ? '| WPA2' : ''}</div></div>
+        <div class="route"><div class="label">RFKill</div><div>${(wifi.rfkill || []).length ? wifi.rfkill.map(r => `${escapeHtml(r.name || r.type)}: soft=${escapeHtml(r.soft)} hard=${escapeHtml(r.hard)}`).join('<br>') : 'No rfkill entries'}</div></div>
+        <div class="hint">${(wifi.notes || []).join(' ')}</div>
+      `;
+    }
+    function renderCellular(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview) {
+      const suggested = (lteSuggest.suggested || {});
+      const rawProfile = lteProfile.raw_profile || '';
+      const defaultDev = ((overview || {}).uplink_ipv4 || {}).dev || ((overview || {}).uplink_ipv6 || {}).dev || '';
+      const cellularConnection = lteProfile.connection || '';
+      const cellularIsDefaultUplink = ['wwan0', 'cdc-wdm0'].includes(defaultDev) || (cellularConnection && defaultDev && cellularConnection.includes(defaultDev));
+      const wifiUplinkPreference = draftValue('wifi.uplink_preference', ((appState.wifi || {}).config || {}).uplink_preference || 'prefer-lte');
+      const uplinkPreferenceControl = `<select id="cellular-uplink-preference" onchange="setUplinkPreference(this.value)">${[{id:'prefer-lte',label:'Prefer Cellular'},{id:'prefer-wifi',label:'Prefer Wi-Fi'},{id:'failover-only',label:'Failover Only'}].map(v => `<option value="${v.id}" ${wifiUplinkPreference === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select>`;
+      appState.rawProfile = rawProfile;
+      return {
+        state: !lte.available ? `<div class="stat-grid"><div class="metric"><div class="label">Modem</div><div class="value small">Not available</div></div><div class="metric"><div class="label">Uplink Preference</div>${uplinkPreferenceControl}</div></div>` : `
+          <div class="stat-grid">
+            <div class="metric"><div class="label">Operator</div><div class="value small">${escapeHtml(lte.operator_name || '-')} (${escapeHtml(lte.operator_mcc || '-')}${escapeHtml(lte.operator_mnc || '')})</div></div>
+            <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(lte.state || '-')}</div></div>
+            <div class="metric"><div class="label">Default Uplink</div><div class="value small">${cellularIsDefaultUplink ? 'Yes' : 'No'}</div></div>
+            <div class="metric"><div class="label">Uplink Preference</div>${uplinkPreferenceControl}</div>
+            <div class="metric"><div class="label">Access Tech</div><div class="value small">${escapeHtml(lte.access_tech || '-')}</div></div>
+            <div class="metric"><div class="label">Signal</div><div class="value small">${escapeHtml(lte.signal_quality || '-')}</div></div>
+            <div class="metric"><div class="label">RSRP</div><div class="value small">${escapeHtml(lte.rsrp || '-')}</div></div>
+            <div class="metric"><div class="label">RSRQ</div><div class="value small">${escapeHtml(lte.rsrq || '-')}</div></div>
+            <div class="metric"><div class="label">SNR</div><div class="value small">${escapeHtml(lte.snr || '-')}</div></div>
+            <div class="metric"><div class="label">RSSI</div><div class="value small">${escapeHtml(lte.rssi || '-')}</div></div>
+          </div>`,
+        apn: `
+          <div class="stat-grid">
+            <div class="metric"><div class="label">Connection</div><div class="value small">${escapeHtml(lteProfile.connection || '-')}</div></div>
+            <div class="metric"><div class="label">Current APN</div><div class="value small">${escapeHtml(lteProfile.apn || '-')}</div></div>
+            <div class="metric"><div class="label">IPv4 Method</div><div class="value small">${escapeHtml(lteProfile.ipv4_method || '-')}</div></div>
+            <div class="metric"><div class="label">IPv6 Method</div><div class="value small">${escapeHtml(lteProfile.ipv6_method || '-')}</div></div>
+          </div>
+          <div class="route"><div class="label">Preset Editor</div><div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">Auto Apply</div><div class="switch-row" style="margin-top:8px;"><div class="muted">Auto apply matching APN</div><label class="switch"><input type="checkbox" ${lteAuto.enabled ? 'checked' : ''} onchange="fetch('/api/lte/apn/auto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:this.checked})}).then(()=>render())"><span class="slider"></span></label></div></div>
+            <div class="metric"><div class="label">Provider Preset</div><select id="cellular-apn-profile">${(lteOptions.options || []).map(option => `<option value="${option.id}" ${draftValue('cellular.apn_profile', suggested.id || '') === option.id ? 'selected' : ''}>${escapeHtml(option.country)} / ${escapeHtml(option.provider)}</option>`).join('')}</select></div>
+            <div class="metric"><div class="label">Manual APN</div><input id="cellular-apn-custom" value="${escapeHtml(draftValue('cellular.apn_custom', lteProfile.apn || suggested.apn || ''))}" /></div>
+            <div class="metric"><div class="label">IPv4 Method</div><select id="cellular-ipv4-method">${['auto','disabled'].map(v => `<option value="${v}" ${draftValue('cellular.ipv4_method', lteProfile.ipv4_method || suggested.ipv4_method || 'auto') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+            <div class="metric"><div class="label">IPv6 Method</div><select id="cellular-ipv6-method">${['auto','disabled'].map(v => `<option value="${v}" ${draftValue('cellular.ipv6_method', lteProfile.ipv6_method || suggested.ipv6_method || 'auto') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+            <div class="metric"><div class="label">Remember For SIM</div><div class="switch-row" style="margin-top:8px;"><div class="muted">Store manual override</div><label class="switch"><input id="cellular-apn-remember" type="checkbox" ${draftValue('cellular.apn_remember', !!(lteSuggest.override && lteSuggest.override.apn)) ? 'checked' : ''}><span class="slider"></span></label></div></div>
+          </div>
+          <div class="controls"><button onclick="applyCellularApnPreview()">Apply Cellular APN</button></div>
+          <div class="hint">Uplink Preference decides whether cellular stays primary, Wi-Fi takes priority, or Wi-Fi only takes over after cellular disappears. The APN editor shows the live cellular profile values.</div></div>
+          <div class="route"><div class="label">Raw Connection Profile</div><div class="muted">Open the live connection dump in an overlay so auto refresh does not replace what you are reading.</div><div class="controls"><button class="secondary" onclick="openRawProfile()">Open Raw Profile</button></div></div>`,
+        at: `
+          <div class="hint">${escapeHtml(atExamples.disclaimer || 'AT commands can change modem state. Use carefully.')}</div>
+          <div class="route"><div class="label">Examples</div><div class="tag-row">${(atExamples.commands || []).map(cmd => `<span class="mini-tag" onclick='document.getElementById("at-command").value=${JSON.stringify(cmd)}' style="cursor:pointer;">${escapeHtml(cmd)}</span>`).join('')}</div></div>
+          <div class="route"><div class="label">AT Command</div><input id="at-command" placeholder='AT+QENG="servingcell"' /><div class="controls"><button onclick="runAtCommand()">Run AT Command</button></div></div>
+          <div class="route"><div class="label">Output</div><div class="code-box"><pre id="at-output">No AT command executed yet.</pre></div><div class="hint">If ModemManager says debug mode is required, the command is blocked by the host modem policy rather than by this portal.</div></div>
+        `,
+      };
+    }
+    function renderPiHolePanel(pihole, piholeNetworks) {
+      return `
+        <div class="stat-grid">
+          <div class="metric"><div class="label">Admin</div><div class="value small">${pihole.admin_reachable ? 'Reachable' : 'Offline'}</div></div>
+          <div class="metric"><div class="label">DNS Binds</div><div class="value small">${escapeHtml((pihole.dns_binds || []).join(', ') || '-')}</div></div>
+          <div class="metric"><div class="label">Forwarding</div><div class="value small">${pihole.dns_forwarding_enabled ? 'Enabled' : 'Disabled'}</div></div>
+          <div class="metric"><div class="label">Container IP</div><div class="value small">${escapeHtml(pihole.container_ip || '-')}</div></div>
+        </div>
+        <div class="route"><div class="label">Network Toggles</div><div class="item-list" style="margin-top:10px;">
+          ${piholeToggleMarkup('Main LAN', 'main_lan', piholeNetworks.main_lan, 'Use Pi-hole for the main trusted LAN.')}
+          ${piholeToggleMarkup('Service LAN', 'service_lan', piholeNetworks.service_lan, 'Use Pi-hole for the isolated service LAN.')}
+          ${piholeToggleMarkup('Wi-Fi', 'wifi', piholeNetworks.wifi, 'Use Pi-hole for hotspot or Wi-Fi clients.')}
+        </div></div>
+        <div class="controls"><button onclick="fetch('/api/pihole/activate',{method:'POST'}).then(()=>render())">Activate Routing</button><a class="chip" href="http://${window.location.hostname}:8081/admin/" target="_blank" rel="noreferrer">Open Pi-hole</a></div>
+        <div class="hint">${(pihole.notes || []).join(' ')}</div>
+      `;
+    }
+    function renderNetAlertPanel(netalert) {
+      return `
+        <div class="stat-grid">
+          <div class="metric"><div class="label">Detected</div><div class="value small">${netalert.detected ? 'YES' : 'NO'}</div></div>
+          <div class="metric"><div class="label">Web UI</div><div class="value small">${netalert.web_reachable ? `Reachable (${netalert.status_code})` : 'Not reachable'}</div></div>
+          <div class="metric"><div class="label">Port</div><div class="value small">${escapeHtml(netalert.port || '-')}</div></div>
+          <div class="metric"><div class="label">Service Name</div><div class="value small">${escapeHtml(netalert.name || '-')}</div></div>
+          <div class="metric"><div class="label">Last Sync</div><div class="value small">${escapeHtml(netalert.last_sync_at || 'Not synced yet')}</div></div>
+          <div class="metric"><div class="label">Scope</div><div class="value small">${escapeHtml((netalert.active_segments || []).join(', ') || 'No active segments')}</div></div>
+        </div>
+        <div class="route"><div class="label">Active Scan Targets</div><div class="item-list" style="margin-top:10px;">${(netalert.scan_subnets || []).length ? netalert.scan_subnets.map(item => `<div class="item"><div class="item-title">${escapeHtml(item)}</div></div>`).join('') : '<div class="muted">No active scan targets</div>'}</div></div>
+        <div class="controls">
+          ${netalert.detected ? `<a class="chip" href="http://${window.location.hostname}:${netalert.port}/" target="_blank" rel="noreferrer">Open NetAlertX</a><button class="secondary" onclick="syncNetAlertX()">Sync Topology</button>` : '<button onclick="installNetAlertX()">Install NetAlertX</button>'}
+        </div>
+        <div class="hint">NetAlertX runs best in host networking mode so it can map your local network directly.</div>
+      `;
+    }
+    function topologySegmentState(segment) {
+      if (segment.standby) return 'Standby';
+      if (segment.active) return 'Active';
+      return 'Idle';
+    }
+    function renderTopologyBlueprint(overview, lanProfile, serviceLan, wifi, netalert) {
+      const defaultDev = (overview.uplink_ipv4 || {}).dev || (overview.uplink_ipv6 || {}).dev || '';
+      const uplink = (overview.uplinks || []).find(i => i.name === defaultDev) || (overview.uplinks || []).find(i => i.role === 'cellular') || (overview.uplinks || [])[0] || {};
+      const overlay = (overview.uplinks || []).find(i => i.role === 'overlay') || {};
+      const hotspotMode = String((wifi.active || {}).mode || wifi.config.mode || '').toLowerCase() === 'hotspot';
+      const segments = [
+        {
+          name: lanProfile.name || 'Main LAN',
+          iface: lanProfile.target_interface || '-',
+          ipv4: lanProfile.ipv4_subnet || '-',
+          ipv6: lanProfile.ipv6_prefix || '-',
+          role: lanProfile.role_description || 'trusted local LAN',
+          active: Boolean((lanProfile.target_interface_status || {}).ipv4?.length || (lanProfile.target_interface_status || {}).ipv6?.length),
+        },
+        {
+          name: serviceLan.name || 'Service LAN',
+          iface: serviceLan.interface || '-',
+          ipv4: serviceLan.ipv4_subnet || '-',
+          ipv6: serviceLan.prefix_ipv6 || '-',
+          role: serviceLan.role_description || 'isolated external LAN',
+          active: String((serviceLan.target_interface_status || {}).state || '').toUpperCase() === 'UP',
+          standby: String((serviceLan.target_interface_status || {}).state || '').toUpperCase() !== 'UP',
+        },
+        {
+          name: hotspotMode ? 'Wi-Fi Hotspot' : 'Wi-Fi Client',
+          iface: wifi.interface || '-',
+          ipv4: hotspotMode ? (((wifi.device || {}).ipv4 || []).map(ip => `${ip}/24`).join(', ') || '10.42.0.0/24') : (((wifi.device || {}).ipv4 || []).join(', ') || '-'),
+          ipv6: hotspotMode ? 'fd42:42::/64' : (((wifi.device || {}).ipv6 || []).join(', ') || '-'),
+          role: hotspotMode ? `hotspot segment for SSID ${(wifi.active || {}).ssid || wifi.config.hotspot_ssid || '-'}` : 'radio used as upstream client link',
+          active: String((wifi.device || {}).state || '').toUpperCase() === 'UP',
+        },
+      ];
+      return `
+        <div class="route">
+          <div class="label">Expected Hierarchy</div>
+          <div class="item-list" style="margin-top:10px;">
+            <div class="item">
+              <div class="item-top"><div class="item-title">Internet Uplink</div><div class="badge">${escapeHtml(uplink.name || defaultDev || uplink.role || 'uplink')}</div></div>
+              <div class="muted">Default path: ${escapeHtml((overview.uplink_ipv4 || {}).via || '-')} via ${escapeHtml((overview.uplink_ipv4 || {}).dev || uplink.name || '-')}</div>
+            </div>
+            <div class="item">
+              <div class="item-top"><div class="item-title">Network Panel Gateway</div><div class="badge">core node</div></div>
+              <div class="muted">Anchor this device as the parent gateway in NetAlertX so local clients hang off one stable node instead of floating.</div>
+            </div>
+            ${segments.map(segment => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(segment.name)}</div><div class="badge">${escapeHtml(topologySegmentState(segment))}</div></div><div class="muted">Interface ${escapeHtml(segment.iface)} | IPv4 ${escapeHtml(segment.ipv4)} | IPv6 ${escapeHtml(segment.ipv6)}</div><div class="muted">${escapeHtml(segment.role)}</div></div>`).join('')}
+            ${overlay.name ? `<div class="item"><div class="item-top"><div class="item-title">Tailscale Overlay</div><div class="badge">management</div></div><div class="muted">Keep it visible in the portal as an overlay path, but do not treat it as a primary local discovery segment.</div></div>` : ''}
+          </div>
+        </div>
+        <div class="route">
+          <div class="label">NetAlertX Layout Guidance</div>
+          <div class="item-list" style="margin-top:10px;">
+            <div class="item"><div class="item-title">Scan only downstream client networks</div><div class="muted">Main LAN, Service LAN and hotspot Wi-Fi are the useful discovery zones. Docker bridges and transient uplink networks make the topology noisy.</div></div>
+            <div class="item"><div class="item-title">Use a single gateway anchor</div><div class="muted">Parent LAN and hotspot clients to the panel device so the graph reads as internet -> panel -> segment clients.</div></div>
+            <div class="item"><div class="item-title">Treat Service LAN as conditional</div><div class="muted">Show the subnet in the blueprint even when the USB NIC is unplugged, but expect clients only when that port is physically up.</div></div>
+            <div class="item"><div class="item-title">Keep uplinks out of the client map</div><div class="muted">LTE and Tailscale matter operationally, but they should frame the topology rather than dominate the discovery graph.</div></div>
+          </div>
+        </div>
+        <div class="controls">
+          ${netalert.detected ? `<a class="chip" href="http://${window.location.hostname}:${netalert.port}/" target="_blank" rel="noreferrer">Open NetAlertX</a>` : ''}
+        </div>
+      `;
+    }
+    function renderServices(services) {
+      const named = [];
+      const unnamed = [];
+      services.forEach(service => {
+        if (['Pi-hole', 'NetAlertX', 'smbd'].includes(service.name)) return;
+        const url = getServiceUrl(service);
+        const markup = serviceCardMarkup(
+          `svc-${service.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
+          service.name,
+          service.active ? 'Active' : 'Detected',
+          `${(service.ports || []).join(', ') || '-'}`,
+          {
+            'Ports': (service.ports || []).join(', ') || '-',
+            'Bind addresses': (service.binds || []).join(', ') || '-',
+            'Source': service.source || 'system',
+            'Type': service.type || 'listener',
+          },
+          [service.source || 'system', service.type || 'listener'],
+          url,
+          'Detected service',
+          'Tap to inspect details and open the service if a web URL is known.'
+        );
+        if ((service.name || '').startsWith('Port ')) unnamed.push(markup);
+        else named.push(markup);
+      });
+      return `
+        <div class="route"><div class="label">Named Services</div><div class="service-list" style="margin-top:10px;">${named.join('') || '<div class="muted">No named services detected</div>'}</div></div>
+        <div class="route"><div class="label">Unnamed Ports</div><div class="service-list" style="margin-top:10px;">${unnamed.join('') || '<div class="muted">No port-only listeners detected</div>'}</div></div>
+      `;
+    }
+    function renderSamba(samba) {
+      return `
         <div class="stat-grid">
           <div class="metric"><div class="label">SMBD</div><div class="value small">${samba.running ? 'Running' : 'Stopped'}</div></div>
           <div class="metric"><div class="label">NMBD</div><div class="value small">${samba.nmbd_running ? 'Running' : 'Stopped'}</div></div>
-          <div class="metric"><div class="label">Config</div><div class="value small">${samba.config_path || 'not found'}</div></div>
+          <div class="metric"><div class="label">Config</div><div class="value small">${escapeHtml(samba.config_path || 'not found')}</div></div>
           <div class="metric"><div class="label">Shares</div><div class="value">${(samba.shares || []).length}</div></div>
           <div class="metric"><div class="label">Portal Shares</div><div class="value">${(samba.portal_shares || []).length}</div></div>
           <div class="metric"><div class="label">Users</div><div class="value">${(samba.users || []).length}</div></div>
-          <div class="metric"><div class="label">Config Writable</div><div class="value small">${samba.host_config_writable ? 'YES' : 'NO'}</div></div>
         </div>
         <div class="controls"><button onclick="controlSamba('start')">Start</button><button onclick="controlSamba('restart')">Restart</button><button class="secondary" onclick="controlSamba('stop')">Stop</button></div>
-        <div class="share-list" style="margin-top:12px;">
-          ${(samba.shares || []).length ? samba.shares.map(share => `<div class="item"><div class="item-top"><div class="item-title">${share.name}</div><div class="badge">${share.read_only || 'read-write'}</div></div><div class="muted">Path: ${share.path || '-'}</div><div class="muted">Guest: ${share.guest_ok || '-'} | Users: ${share.valid_users || 'any configured user'} | Source: ${share.source || 'main'}</div>${share.source === 'portal' ? `<div class="controls"><button class="secondary" onclick="deleteSambaShare('${share.name}')">Delete Share</button></div>` : ''}</div>`).join('') : '<div class="item"><div class="muted">No shares found in the active Samba config.</div></div>'}
-        </div>
-        <div class="route"><div class="label">Users</div><div class="share-list">${(samba.users || []).length ? samba.users.map(user => `<div class="item"><div class="item-top"><div class="item-title">${user.username}</div><div class="badge">SMB</div></div><div class="muted">${user.description || 'Samba account present'}</div><div class="controls"><button class="secondary" onclick="setSambaUserState('${user.username}', 'disable')">Disable</button><button class="secondary" onclick="setSambaUserState('${user.username}', 'enable')">Enable</button><button class="secondary" onclick="deleteSambaUser('${user.username}')">Delete User</button></div></div>`).join('') : '<div class="item"><div class="muted">No Samba users detected in passdb.</div></div>'}</div></div>
-        <div class="route"><div class="label">Share Management</div><div class="stat-grid"><div class="metric"><div class="label">Share Name</div><input id="samba-share-name" placeholder="media" /></div><div class="metric"><div class="label">Path</div><input id="samba-share-path" placeholder="/srv/storage/media" /></div><div class="metric"><div class="label">Read Only</div><select id="samba-share-readonly"><option value="No">No</option><option value="Yes">Yes</option></select></div><div class="metric"><div class="label">Guest OK</div><select id="samba-share-guest"><option value="No">No</option><option value="Yes">Yes</option></select></div><div class="metric"><div class="label">Valid Users</div><input id="samba-share-users" placeholder="evil alice" /></div></div><div class="controls"><button onclick="saveSambaShare()">Save Share</button></div><div class="hint">Portal-managed shares are written into a dedicated include file so the main Samba config stays readable.</div></div>
-        <div class="route"><div class="label">User Management</div><div class="stat-grid"><div class="metric"><div class="label">Username</div><input id="samba-username" placeholder="evil" /></div><div class="metric"><div class="label">Password</div><input id="samba-password" type="password" /></div></div><div class="controls"><button onclick="setSambaPassword()">Add / Update Samba User</button></div><div class="hint">${samba.smbpasswd_available ? 'User management now targets the host Samba database.' : 'smbpasswd is not available inside the backend image.'}</div></div>
-        <div class="route"><div class="label">Printing</div><div class="stat-grid"><div class="metric"><div class="label">CUPS</div><div class="value small">${printing.cups_installed ? (printing.cups_active ? 'Running' : 'Stopped') : 'Not installed'}</div></div><div class="metric"><div class="label">Enabled</div><div class="value small">${printing.cups_installed ? (printing.cups_enabled ? 'YES' : 'NO') : '-'}</div></div><div class="metric"><div class="label">Listener</div><div class="value small">${printing.cups_listener ? 'Port 631' : '-'}</div></div><div class="metric"><div class="label">Printer Shares</div><div class="value small">${(printing.printer_shares || []).map(s => s.name).join(', ') || '-'}</div></div></div><div class="controls"><button onclick="controlPrinting('start')">Start</button><button onclick="controlPrinting('restart')">Restart</button><button class="secondary" onclick="controlPrinting('stop')">Stop</button></div><div class="hint">${printing.cups_installed ? 'CUPS controls affect the device print service.' : 'CUPS is not installed right now. Samba printer shares exist, but there is no local print daemon to manage.'}</div></div>`;
-
-      const ethernetInterfaces = interfaces.filter(i => i.physical && i.role === 'ethernet');
-      document.getElementById('service-lan').innerHTML = renderLanCard(serviceLan, 'service-lan', ethernetInterfaces);
-      document.getElementById('main-lan').innerHTML = renderLanCard(lanProfile, 'main-lan', ethernetInterfaces);
-
-      document.getElementById('wifi-panel').innerHTML = `
+        <div class="route"><div class="label">Shares</div><div class="item-list" style="margin-top:10px;">${(samba.shares || []).length ? samba.shares.map(share => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(share.name)}</div><div class="badge">${escapeHtml(share.source || 'main')}</div></div><div class="muted">Path: ${escapeHtml(share.path || '-')}</div><div class="muted">Guest: ${escapeHtml(share.guest_ok || '-')} | RO: ${escapeHtml(share.read_only || '-')} | Users: ${escapeHtml(share.valid_users || 'configured users')}</div>${share.source === 'portal' ? `<div class="controls"><button class="secondary" onclick="deleteSambaShare('${share.name}')">Delete Share</button></div>` : ''}</div>`).join('') : '<div class="muted">No Samba shares found.</div>'}</div></div>
+        <div class="route"><div class="label">Share Management</div><div class="stat-grid" style="margin-top:10px;"><div class="metric"><div class="label">Share Name</div><input id="samba-share-name" placeholder="media" /></div><div class="metric"><div class="label">Path</div><input id="samba-share-path" placeholder="/srv/storage/media" /></div><div class="metric"><div class="label">Read Only</div><select id="samba-share-readonly"><option value="No">No</option><option value="Yes">Yes</option></select></div><div class="metric"><div class="label">Guest OK</div><select id="samba-share-guest"><option value="No">No</option><option value="Yes">Yes</option></select></div><div class="metric"><div class="label">Valid Users</div><input id="samba-share-users" placeholder="evil alice" /></div></div><div class="controls"><button onclick="saveSambaShare()">Save Share</button></div></div>
+        <div class="route"><div class="label">User Management</div><div class="item-list" style="margin-top:10px;">${(samba.users || []).length ? samba.users.map(user => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(user.username)}</div><div class="badge">SMB</div></div><div class="muted">${escapeHtml(user.description || 'Samba account')}</div><div class="controls"><button class="secondary" onclick="setSambaUserState('${user.username}','disable')">Disable</button><button class="secondary" onclick="setSambaUserState('${user.username}','enable')">Enable</button><button class="secondary" onclick="deleteSambaUser('${user.username}')">Delete</button></div></div>`).join('') : '<div class="muted">No Samba users detected</div>'}</div><div class="stat-grid" style="margin-top:10px;"><div class="metric"><div class="label">Username</div><input id="samba-username" placeholder="evil" /></div><div class="metric"><div class="label">Password</div><input id="samba-password" type="password" /></div></div><div class="controls"><button onclick="setSambaPassword()">Add / Update Samba User</button></div></div>
+      `;
+    }
+    function renderPrinting(printing) {
+      return `
         <div class="stat-grid">
-          <div class="metric"><div class="label">Interface</div><div class="value small">${wifi.interface}</div></div>
-          <div class="metric"><div class="label">State</div><div class="value small">${wifi.device.state || '-'}</div></div>
-          <div class="metric"><div class="label">NetworkManager</div><div class="value small">${wifi.device.nm_state || '-'}</div></div>
-          <div class="metric"><div class="label">Radio</div><div class="value small">${wifi.device.wifi_radio || '-'}</div></div>
-          <div class="metric"><div class="label">Active Mode</div><div class="value small">${wifi.active?.mode || '-'}</div></div>
-          <div class="metric"><div class="label">Security</div><div class="value small">${wifi.active?.security || wifi.config.hotspot_security || '-'}</div></div>
-          <div class="metric"><div class="label">Active SSID</div><div class="value small">${wifi.active?.ssid || '-'}</div></div>
-          <div class="metric"><div class="label">Current IPv4</div><div class="value small">${(wifi.device.ipv4 || []).join(', ') || '-'}</div></div>
-          <div class="metric"><div class="label">Current IPv6</div><div class="value small">${(wifi.device.ipv6 || []).join(', ') || '-'}</div></div>
+          <div class="metric"><div class="label">CUPS</div><div class="value small">${printing.cups_installed ? (printing.cups_active ? 'Running' : 'Stopped') : 'Not installed'}</div></div>
+          <div class="metric"><div class="label">Enabled</div><div class="value small">${printing.cups_installed ? (printing.cups_enabled ? 'YES' : 'NO') : '-'}</div></div>
+          <div class="metric"><div class="label">Listener</div><div class="value small">${printing.cups_listener ? 'Port 631' : '-'}</div></div>
+          <div class="metric"><div class="label">Printer Shares</div><div class="value small">${(printing.printer_shares || []).map(s => s.name).join(', ') || '-'}</div></div>
         </div>
-        <div class="route">
-          <div class="label">Live Connection</div>
-          <div class="stat-grid" style="margin-top:10px;">
-            <div class="metric"><div class="label">Connection</div><div class="value small">${wifi.active?.connection || wifi.device.nm_connection || '-'}</div></div>
-            <div class="metric"><div class="label">IPv4 Method</div><div class="value small">${wifi.active?.ipv4_method || '-'}</div></div>
-            <div class="metric"><div class="label">IPv6 Method</div><div class="value small">${wifi.active?.ipv6_method || '-'}</div></div>
-          </div>
-        </div>
-        <div class="stat-grid" style="margin-top:10px;">
-          <div class="metric"><div class="label">Interface</div><select id="wifi-interface">${interfaces.filter(i => i.role === 'wifi').map(i => `<option value="${i.name}" ${draftValue('wifi.interface', wifi.interface) === i.name ? 'selected' : ''}>${i.name}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">Mode</div><select id="wifi-mode">${['client', 'hotspot'].map(v => `<option value="${v}" ${draftValue('wifi.mode', wifi.config.mode) === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">Client SSID</div><input id="wifi-ssid" value="${draftValue('wifi.ssid', wifi.config.ssid || '')}" /></div>
-          <div class="metric"><div class="label">Client Password</div><input id="wifi-password" type="password" value="${draftValue('wifi.password', wifi.config.password || '')}" /></div>
-          <div class="metric"><div class="label">Hotspot SSID</div><input id="wifi-hotspot-ssid" value="${draftValue('wifi.hotspot_ssid', wifi.config.hotspot_ssid || '')}" /></div>
-          <div class="metric"><div class="label">Hotspot Password</div><input id="wifi-hotspot-password" type="password" value="${draftValue('wifi.hotspot_password', wifi.config.hotspot_password || '')}" /></div>
-          <div class="metric"><div class="label">Hotspot Security</div><select id="wifi-hotspot-security">${[{id:'wpa2-personal',label:'WPA2-Personal'},{id:'open',label:'Open'}].map(v => `<option value="${v.id}" ${draftValue('wifi.hotspot_security', wifi.config.hotspot_security || 'wpa2-personal') === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">IPv4 Method</div><select id="wifi-ipv4-method">${['auto', 'manual', 'shared'].map(v => `<option value="${v}" ${draftValue('wifi.ipv4_method', wifi.config.ipv4_method) === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">IPv4 Address</div><input id="wifi-ipv4-address" value="${draftValue('wifi.ipv4_address', wifi.config.ipv4_address || '')}" /></div>
-          <div class="metric"><div class="label">IPv6 Method</div><select id="wifi-ipv6-method">${['auto', 'manual', 'disabled'].map(v => `<option value="${v}" ${draftValue('wifi.ipv6_method', wifi.config.ipv6_method) === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-          <div class="metric"><div class="label">IPv6 Address</div><input id="wifi-ipv6-address" value="${draftValue('wifi.ipv6_address', wifi.config.ipv6_address || '')}" /></div>
-        </div>
-        <div class="controls"><button onclick="saveWifiConfig()">Save Wi-Fi Config</button><button onclick="applyWifi()">Apply Wi-Fi</button><button class="secondary" onclick="rescanWifi()">Rescan</button><button class="secondary" onclick="setWifiPower('on')">Wi-Fi On</button><button class="warn" onclick="setWifiPower('off')">Wi-Fi Off</button></div>
-        <div class="list-box"><div class="label">Connected Wi-Fi Clients</div><div class="client-list" style="margin-top:10px;">${(wifiClients || []).length ? wifiClients.map(c => `<div class="item"><div class="item-top"><div class="item-title">${c.hostname || c.mac || 'Client'}</div><div class="badge">${c.interface || '-'}</div></div><div class="muted">IP: ${c.ip}</div><div class="muted">MAC: ${c.mac || '-'}</div><div class="muted">Family: ${c.family || '-'} | State: ${c.state || '-'}</div></div>`).join('') : '<div class="item"><div class="muted">No Wi-Fi clients detected</div></div>'}</div></div>
-        <div class="list-box"><div class="label">Visible Wi-Fi Networks</div><div class="wifi-list" style="margin-top:10px;">${(wifi.scan || []).length ? wifi.scan.map(n => `<div class="item"><div class="item-top"><div class="item-title">${n.ssid}</div><div class="badge">${n.signal}%</div></div><div class="muted">${n.security || 'open'} ${n.in_use ? '| connected' : ''}</div></div>`).join('') : '<div class="item"><div class="muted">No scan results</div></div>'}</div></div>
-        <div class="route"><div class="label">RFKill</div><div>${(wifi.rfkill || []).length ? wifi.rfkill.map(r => `${r.name || r.type}: soft=${r.soft} hard=${r.hard}`).join('<br>') : 'No rfkill entries'}</div></div>
-        <div class="hint">${(wifi.notes || []).join(' ')}</div>`;
+        <div class="controls"><button onclick="controlPrinting('start')">Start</button><button onclick="controlPrinting('restart')">Restart</button><button class="secondary" onclick="controlPrinting('stop')">Stop</button></div>
+        <div class="hint">${printing.cups_installed ? 'CUPS controls the local print daemon.' : 'CUPS is not installed on this device yet.'}</div>
+      `;
+    }
+    function renderFileSystem(fs) {
+      const noisyMountPrefixes = ['/snap', '/var/lib/docker', '/run/docker', '/proc', '/sys', '/dev'];
+      const disks = (fs.disks || []).filter(d => !String(d.name || '').startsWith('loop'));
+      const mounts = (fs.mounts || []).filter(m => !noisyMountPrefixes.some(prefix => String(m.mountpoint || '').startsWith(prefix)));
+      const external = fs.external || [];
+      const primaryMounts = mounts.filter(m => ['/', '/boot', '/boot/efi', '/srv', '/srv/storage'].includes(m.mountpoint) || String(m.mountpoint || '').startsWith('/media') || String(m.mountpoint || '').startsWith('/mnt'));
+      const otherMounts = mounts.filter(m => !primaryMounts.includes(m));
+      const topLevelDisks = disks.filter(d => ['disk', 'part', 'raid'].includes(String(d.type || '')));
+      return `
+        <div class="route"><div class="label">Key Mounts</div><div class="item-list" style="margin-top:10px;">${primaryMounts.length ? primaryMounts.map(m => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(m.mountpoint)}</div><div class="badge">${escapeHtml(m.use_percent)}</div></div><div class="muted">${escapeHtml(m.filesystem)} | Size ${escapeHtml(m.size)} | Used ${escapeHtml(m.used)} | Free ${escapeHtml(m.available)}</div></div>`).join('') : '<div class="muted">No key mounts available</div>'}</div></div>
+        <div class="route"><div class="label">Storage Devices</div><div class="item-list" style="margin-top:10px;">${topLevelDisks.length ? topLevelDisks.map(d => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(d.name)}</div><div class="badge">${escapeHtml(d.size || '-')}</div></div><div class="muted">Type: ${escapeHtml(d.type || '-')} | FS: ${escapeHtml(d.fstype || '-')} | Mount: ${escapeHtml(d.mountpoint || '-')}</div><div class="muted">Model: ${escapeHtml(d.model || '-')} | Transport: ${escapeHtml(d.tran || '-')}</div></div>`).join('') : '<div class="muted">No storage devices reported</div>'}</div></div>
+        <div class="route"><div class="label">External / USB Storage</div><div class="item-list" style="margin-top:10px;">${external.length ? external.map(d => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(d.name)}</div><div class="badge">${escapeHtml(d.size || '-')}</div></div><div class="muted">Transport: ${escapeHtml(d.tran || '-')} | Mount: ${escapeHtml(d.mountpoint || '-')} | Label: ${escapeHtml(d.label || '-')}</div></div>`).join('') : '<div class="muted">No removable or USB storage detected</div>'}</div></div>
+        <div class="route"><div class="label">Other Mounts</div><div class="item-list" style="margin-top:10px;">${otherMounts.length ? otherMounts.map(m => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(m.mountpoint)}</div><div class="badge">${escapeHtml(m.use_percent)}</div></div><div class="muted">${escapeHtml(m.filesystem)} | Size ${escapeHtml(m.size)} | Used ${escapeHtml(m.used)} | Free ${escapeHtml(m.available)}</div></div>`).join('') : '<div class="muted">No additional mounts worth showing right now</div>'}</div></div>
+      `;
+    }
+    async function render() {
+      const [
+        overview, systemStats, lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples,
+        services, pihole, piholeNetworks, netalert, samba, printing, interfaces,
+        serviceLan, serviceLanClients, wifiClients, lanProfile, activeSessions, wifi, filesystem
+      ] = await Promise.all([
+        loadJSON('/api/overview'),
+        loadJSON('/api/system/stats'),
+        loadJSON('/api/lte'),
+        loadJSON('/api/lte/profile'),
+        loadJSON('/api/lte/apn/options'),
+        loadJSON('/api/lte/apn/suggest'),
+        loadJSON('/api/lte/apn/auto'),
+        loadJSON('/api/lte/at/examples'),
+        loadJSON('/api/services'),
+        loadJSON('/api/pihole/status'),
+        loadJSON('/api/pihole/networks'),
+        loadJSON('/api/netalert/status'),
+        loadJSON('/api/samba/status'),
+        loadJSON('/api/printing/status'),
+        loadJSON('/api/interfaces'),
+        loadJSON('/api/service-lan/status'),
+        loadJSON('/api/service-lan/clients'),
+        loadJSON('/api/wifi/clients'),
+        loadJSON('/api/main-lan/status'),
+        loadJSON('/api/active-sessions'),
+        loadJSON('/api/wifi/status'),
+        loadJSON('/api/filesystem'),
+      ]);
 
-      document.getElementById('interfaces').innerHTML = `<div class="interface-list">${interfaces.map(i => `<div class="item"><div class="item-top"><div class="item-title">${i.name}</div><div class="badge">${i.state}</div></div><div class="muted">Role: ${i.role || '-'} | MAC: ${i.mac || '-'} | MTU: ${i.mtu || '-'}</div><div class="muted">IPv4: ${(i.ipv4 || []).join(', ') || '-'}</div><div class="muted">IPv6: ${(i.ipv6 || []).join(', ') || '-'}</div>${i.physical ? `<div class="controls"><button onclick="setLinkState('${i.name}', 'up')">Link Up</button><button class="secondary" onclick="setLinkState('${i.name}', 'down')">Link Down</button></div>` : ''}</div>`).join('')}</div>`;
+      appState.lastSyncAt = Date.now();
+      appState.serviceDetails = {};
+      appState.wifi = wifi;
+      updateRefreshState();
 
-      document.getElementById('service-lan-clients').innerHTML = serviceLanClients.length ? `<div class="client-list">${serviceLanClients.map(c => `<div class="item"><div class="item-top"><div class="item-title">${c.hostname || c.mac || 'Client'}</div><div class="badge">${c.interface || '-'}</div></div><div class="muted">IP: ${c.ip}</div><div class="muted">MAC: ${c.mac || '-'}</div><div class="muted">Family: ${c.family || '-'} | State: ${c.state || '-'}</div></div>`).join('')}</div>` : '<div class="muted">No clients detected</div>';
+      document.getElementById('overview').innerHTML = renderOverview(overview, systemStats, activeSessions);
+      document.getElementById('docker-brief').innerHTML = renderDockerBrief(systemStats);
+      document.getElementById('dashboard-sessions').innerHTML = renderSessions(activeSessions);
+      const sessionBadge = document.getElementById('dashboard-session-count');
+      const totalSessions = sessionCount(activeSessions);
+      sessionBadge.textContent = String(totalSessions);
+      sessionBadge.className = sessionCountClass(totalSessions);
 
-      document.getElementById('active-sessions').innerHTML = activeSessions.length ? `<div class="session-list">${activeSessions.map(s => `<div class="item"><div class="item-top"><div class="item-title">${s.entry || s.service}</div><div class="badge">${s.interface || '-'}</div></div><div class="muted">Peer: ${s.peer_address}:${s.peer_port} -> ${s.local_address}:${s.local_port}</div><div class="muted">Family: ${s.family}${s.process ? ` | Process: ${s.process}` : ''}</div></div>`).join('')}</div>` : '<div class="muted">No active sessions detected</div>';
+      document.getElementById('main-lan').innerHTML = renderLanCard('main', lanProfile);
+      document.getElementById('service-lan').innerHTML = renderLanCard('service', serviceLan);
+
+      const groups = categorizeInterfaces(interfaces);
+      document.getElementById('interfaces').innerHTML = [
+        renderInterfaceGroup('Uplinks', groups.uplinks),
+        renderInterfaceGroup('LAN Ports', groups.lan),
+        renderInterfaceGroup('Wireless', groups.wireless),
+        renderInterfaceGroup('Virtual / Other', groups.virtual),
+      ].join('');
+
+      document.getElementById('service-lan-clients').innerHTML = (serviceLanClients || []).length ? `<div class="item-list">${serviceLanClients.map(c => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(c.hostname || c.mac || 'Client')}</div><div class="badge">${escapeHtml(c.interface || '-')}</div></div><div class="muted">IP: ${escapeHtml(c.ip)} | MAC: ${escapeHtml(c.mac || '-')} | ${escapeHtml(c.family || '-')} | ${escapeHtml(c.state || '-')}</div></div>`).join('')}</div>` : '<div class="muted">No clients detected</div>';
+      document.getElementById('wifi-panel').innerHTML = renderWireless(wifi, interfaces, wifiClients, piholeNetworks, overview);
+
+      const cellular = renderCellular(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview);
+      document.getElementById('cellular-state').innerHTML = cellular.state;
+      document.getElementById('cellular-apn').innerHTML = cellular.apn;
+      document.getElementById('cellular-at').innerHTML = cellular.at;
+
+      document.getElementById('pihole-panel').innerHTML = renderPiHolePanel(pihole, piholeNetworks);
+      document.getElementById('netalert-panel').innerHTML = renderNetAlertPanel(netalert);
+      document.getElementById('topology-panel').innerHTML = renderTopologyBlueprint(overview, lanProfile, serviceLan, wifi, netalert);
+      document.getElementById('services').innerHTML = renderServices(services);
+
+      document.getElementById('samba-panel').innerHTML = renderSamba(samba);
+      document.getElementById('printing-panel').innerHTML = renderPrinting(printing);
+      document.getElementById('filesystem-panel').innerHTML = renderFileSystem(filesystem);
+      document.getElementById('lorawan-panel').innerHTML = `<div class="stat-grid"><div class="metric"><div class="label">Module State</div><div class="value small">Not installed yet</div></div><div class="metric"><div class="label">Planned Uses</div><div class="value small">LoRaWAN, Meshtastic, profiles and radio settings</div></div></div><div class="hint">This page is ready as a placeholder so future radio modules can live in a dedicated area instead of being scattered across the dashboard.</div>`;
 
       [
         ['main-lan-role', 'main_lan.role'],
@@ -1005,32 +1770,50 @@
         ['service-lan-ipv6-gateway', 'service_lan.ipv6_gateway'],
         ['service-lan-ipv6-prefix', 'service_lan.ipv6_prefix'],
         ['service-lan-dns-servers', 'service_lan.dns_servers'],
-        ['wifi-interface', 'wifi.interface'],
         ['wifi-mode', 'wifi.mode'],
+        ['wifi-client-trust-mode', 'wifi.client_trust_mode'],
+        ['wifi-uplink-preference', 'wifi.uplink_preference'],
         ['wifi-ssid', 'wifi.ssid'],
         ['wifi-password', 'wifi.password'],
         ['wifi-hotspot-ssid', 'wifi.hotspot_ssid'],
         ['wifi-hotspot-password', 'wifi.hotspot_password'],
         ['wifi-hotspot-security', 'wifi.hotspot_security'],
+        ['wifi-country', 'wifi.country'],
+        ['wifi-band', 'wifi.band'],
+        ['wifi-channel', 'wifi.channel'],
         ['wifi-ipv4-method', 'wifi.ipv4_method'],
         ['wifi-ipv4-address', 'wifi.ipv4_address'],
         ['wifi-ipv6-method', 'wifi.ipv6_method'],
         ['wifi-ipv6-address', 'wifi.ipv6_address'],
+        ['cellular-apn-profile', 'cellular.apn_profile'],
+        ['cellular-apn-custom', 'cellular.apn_custom'],
+        ['cellular-ipv4-method', 'cellular.ipv4_method'],
+        ['cellular-ipv6-method', 'cellular.ipv6_method'],
+        ['cellular-apn-remember', 'cellular.apn_remember'],
+        ['at-command', 'cellular.at_command'],
       ].forEach(([id, key]) => bindDraft(id, key));
 
-      updateRefreshState();
+      const atCommandEl = document.getElementById('at-command');
+      if (atCommandEl) atCommandEl.value = draftValue('cellular.at_command', atCommandEl.value);
+
       setView(appState.activeView);
+      updateRefreshState();
     }
     async function pollRender() {
+      if (document.hidden) {
+        updateRefreshState();
+        return;
+      }
       if (hasActiveEditing()) {
         updateRefreshState();
         return;
       }
       await render();
     }
-    setView('dashboard');
+    loadTheme();
+    setView(appState.activeView);
     render();
-    setInterval(pollRender, 10000);
+    setInterval(pollRender, AUTO_REFRESH_MS);
     window.addEventListener('focusin', updateRefreshState);
     window.addEventListener('focusout', () => setTimeout(updateRefreshState, 0));
   </script>

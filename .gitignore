@@ -15,3 +15,5 @@ pytest_cache/
 *.log
 .vscode/
 .idea/
+backend/data/netalertx/
+backend/data/*.json
