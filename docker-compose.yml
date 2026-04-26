@@ -1,6 +1,8 @@
 services:
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: network-panel-backend
     restart: unless-stopped
     network_mode: host
@@ -29,6 +31,8 @@ services:
       SERVICE_LAN_IPV6_PREFIX: fd42:10::/64
       SERVICE_LAN_ENABLE_IPV4: "true"
       SERVICE_LAN_ENABLE_IPV6: "true"
+      PANEL_USERNAME: ${PANEL_USERNAME:-admin}
+      PANEL_PASSWORD: ${PANEL_PASSWORD:?Set PANEL_PASSWORD in .env before starting the panel}
     volumes:
       - /:/host:ro
       - ./backend/data:/app/data

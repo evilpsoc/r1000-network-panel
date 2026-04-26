@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>R1000 Device Admin</title>
+  <script type="module" src="/src/app.js"></script>
+</head>
+<body data-theme="dark" data-auth="locked">
+
+  <section class="login-screen">
+    <div class="login-panel">
+      <div class="login-brand">
+        <div>
+          <span class="section-pill">Network Console</span>
+          <h1>R1000 Device Admin</h1>
+          <p>Secure access to LAN policy, uplinks, services, storage and device I/O from one operational control plane.</p>
+        </div>
+        <div class="login-status-grid">
+          <div class="login-status"><div class="label">Device</div><div class="value small">R1035-10</div></div>
+          <div class="login-status"><div class="label">Mode</div><div class="value small">Edge</div></div>
+          <div class="login-status"><div class="label">Access</div><div class="value small">Local</div></div>
+        </div>
+      </div>
+      <form class="login-form" onsubmit="login(event)">
+        <div>
+          <h2>Sign in</h2>
+          <p>Use the panel credentials configured on this device.</p>
+        </div>
+        <label>
+          <span class="label">Username</span>
+          <input id="login-username" autocomplete="username" value="admin" />
+        </label>
+        <label>
+          <span class="label">Password</span>
+          <input id="login-password" type="password" autocomplete="current-password" autofocus />
+        </label>
+        <div id="login-error" class="login-error"></div>
+        <button type="submit">Sign In</button>
+      </form>
+    </div>
+  </section>
+  <div class="shell">
+    <header class="app-header">
+      <button class="brand-mark directory-crumb" onclick="setView('dashboard')" aria-label="Dashboard">
+        <span class="brand-orb"></span>
+        <span class="crumb-root">network-panel</span>
+        <span class="crumb-sep">/</span>
+        <span id="nav-context" class="crumb-current">dashboard</span>
+      </button>
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-menu">
+          <button class="nav-trigger" data-view="dashboard" onclick="setView('dashboard')"><span class="nav-icon deploy"></span>Dashboard</button>
+        </div>
+        <div class="nav-menu">
+          <button class="nav-trigger" type="button"><span class="nav-icon network"></span>Network</button>
+          <div class="mega-menu">
+            <button class="mega-card nav-button" data-view="network" onclick="setView('network')"><span><span class="nav-label">Networks</span><span class="nav-hint">LAN roles, clients and interfaces</span></span></button>
+            <button class="mega-card nav-button" data-view="wireless" onclick="setView('wireless')"><span><span class="nav-label">Wireless</span><span class="nav-hint">Wi-Fi mode, scan and hotspot</span></span></button>
+            <button class="mega-card nav-button" data-view="cellular" onclick="setView('cellular')"><span><span class="nav-label">Cellular</span><span class="nav-hint">Signal, APN, raw profile and AT tools</span></span></button>
+            <button class="mega-strip nav-button" data-view="monitoring" onclick="setView('monitoring')"><span><span class="nav-label">Monitoring</span><span class="nav-hint">Pi-hole, NetAlertX and network visibility</span></span></button>
+          </div>
+        </div>
+        <div class="nav-menu">
+          <button class="nav-trigger" data-view="logs" onclick="setView('logs')"><span class="nav-icon scale"></span>Logs</button>
+        </div>
+        <div class="nav-menu">
+          <button class="nav-trigger" type="button"><span class="nav-icon monitor"></span>Services</button>
+          <div class="mega-menu compact">
+            <button class="mega-card nav-button" data-view="services" onclick="setView('services')"><span><span class="nav-label">Services</span><span class="nav-hint">Local listeners and entry points</span></span></button>
+            <button class="mega-card nav-button" data-view="filesharing" onclick="setView('filesharing')"><span><span class="nav-label">File Sharing</span><span class="nav-hint">Samba shares and printing</span></span></button>
+            <button class="mega-card nav-button" data-view="users" onclick="setView('users')"><span><span class="nav-label">Users</span><span class="nav-hint">Accounts and access users</span></span></button>
+          </div>
+        </div>
+        <div class="nav-menu">
+          <button class="nav-trigger" type="button"><span class="nav-icon evolve"></span>Device</button>
+          <div class="mega-menu compact">
+            <button class="mega-card nav-button" data-view="filesystem" onclick="setView('filesystem')"><span><span class="nav-label">File System</span><span class="nav-hint">Mounts, disks and external storage</span></span></button>
+            <button class="mega-card nav-button" data-view="deviceio" onclick="setView('deviceio')"><span><span class="nav-label">Device I/O</span><span class="nav-hint">LEDs, serial ports and GPIO chips</span></span></button>
+            <button class="mega-card nav-button" data-view="lorawan" onclick="setView('lorawan')"><span><span class="nav-label">LoRaWAN</span><span class="nav-hint">Future radio workflows</span></span></button>
+          </div>
+        </div>
+      </nav>
+      <div class="header-actions">
+        <div class="refresh-state"><span id="refresh-dot" class="dot live"></span><span id="refresh-state">Auto refresh live</span></div>
+        <div class="nav-menu account-menu">
+          <button class="nav-trigger" type="button"><span class="nav-icon account"></span>Admin</button>
+          <div class="mega-menu account-panel">
+            <div class="mega-strip">
+              <span class="nav-label">Session</span>
+              <span id="refresh-detail" class="nav-hint">Forms stay local while you are editing, then background refresh resumes.</span>
+            </div>
+            <button class="mega-card nav-button" onclick="render()"><span><span class="nav-label">Sync Now</span><span class="nav-hint">Refresh panel data</span></span></button>
+            <button class="mega-card nav-button" onclick="logout()"><span><span class="nav-label">Logout</span><span class="nav-hint">End this browser session</span></span></button>
+            <div class="mega-actions">
+              <button class="secondary" onclick="restartSystem()">Restart</button>
+              <button class="danger" onclick="powerOffSystem()">Power Off</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="toolbar">
+        <div class="toolbar-main">
+          <h2 id="page-title">Dashboard</h2>
+          <p id="page-subtitle">Device overview, usage and quick health.</p>
+        </div>
+        <div class="toolbar-actions">
+          <span id="last-sync" class="chip">Waiting for first sync</span>
+        </div>
+      </div>
+
+      <section id="page-dashboard" class="page">
+        <div class="grid">
+          <div class="card span-2">
+            <div class="card-header"><div><h3>Device Overview</h3><p>Identity, usage, routes and current local access.</p></div><span class="section-pill">Home</span></div>
+            <div id="overview">Loading...</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><h3>Docker Brief</h3><p>Running containers and quick service pulse.</p></div></div>
+            <div id="docker-brief">Loading...</div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><h3>Live Sessions</h3><p>Recent SSH, dashboard and local service sessions.</p></div><span id="dashboard-session-count" class="badge session-count idle">0</span></div>
+            <div id="dashboard-sessions">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-network" class="page">
+        <div class="grid">
+          <div class="card"><div class="card-header"><div><h3>Main LAN</h3><p>Trusted local network and homelab segment.</p></div></div><div id="main-lan">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>Service LAN</h3><p>Isolated service or client network with independent policy.</p></div></div><div id="service-lan">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Interfaces</h3><p>Grouped by role so physical and virtual links are easier to scan.</p></div></div><div id="interfaces">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Connected Clients</h3><p>Detected LAN clients and where they are attached.</p></div></div><div id="service-lan-clients">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-wireless" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>Wireless</h3><p>Client mode, hotspot mode, radio power and per-Wi-Fi Pi-hole policy.</p></div></div><div id="wifi-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-cellular" class="page">
+        <div class="grid">
+          <div class="card"><div class="card-header"><div><h3>Cellular State</h3><p>Registration, signal and modem health.</p></div></div><div id="cellular-state">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>Cellular APN</h3><p>Preset profile editor, raw profile view and auto apply.</p></div></div><div id="cellular-apn">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>AT Command Line</h3><p>Direct modem commands with guardrails. Use carefully.</p></div></div><div id="cellular-at">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-monitoring" class="page">
+        <div class="grid operational">
+          <div class="card"><div class="card-header"><div><h3>Pi-hole</h3><p>Per-network toggles, status and forwarding visibility.</p></div></div><div id="pihole-panel">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>NetAlertX</h3><p>Network discovery, map view and install controls.</p></div></div><div id="netalert-panel">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Network State</h3><p>Compact status across uplink, LANs, Wi-Fi, sessions and discovery scope.</p></div></div><div id="topology-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-logs" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>Activity Logs</h3><p>Recent panel, service and network events.</p></div><span class="section-pill">Live</span></div><div id="logs-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-services" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>Services</h3><p>Detected listeners with docker/system tags and compact cards.</p></div></div><div id="services">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-filesharing" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>Samba Shares</h3><p>Shares, guest policy and portal managed config.</p></div></div><div id="samba-panel">Loading...</div></div>
+          <div class="card"><div class="card-header"><div><h3>Printing</h3><p>CUPS state and printer share status.</p></div></div><div id="printing-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-users" class="page">
+        <div class="grid">
+          <div class="card"><div class="card-header"><div><h3>Panel Login</h3><p>Admin account used for this web panel.</p></div></div>
+            <label>
+              <span class="label">Username</span>
+              <input id="account-username" autocomplete="username" />
+            </label>
+            <label>
+              <span class="label">Current Password</span>
+              <input id="account-current-password" type="password" autocomplete="current-password" />
+            </label>
+            <label>
+              <span class="label">New Password</span>
+              <input id="account-new-password" type="password" autocomplete="new-password" placeholder="Leave empty to keep current" />
+            </label>
+            <div id="account-message" class="hint"></div>
+            <div class="controls">
+              <button class="secondary" onclick="updateCredentials()">Save Account</button>
+            </div>
+          </div>
+          <div class="card span-2"><div class="card-header"><div><h3>Samba Users</h3><p>SMB account creation, password updates and access state.</p></div></div><div id="samba-users-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-filesystem" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>File System</h3><p>Disk layout, mounts and removable media visibility.</p></div></div><div id="filesystem-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-deviceio" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>Device I/O</h3><p>Kernel-visible LEDs, serial ports and GPIO controllers.</p></div></div><div id="deviceio-panel">Loading...</div></div>
+        </div>
+      </section>
+
+      <section id="page-lorawan" class="page">
+        <div class="grid">
+          <div class="card span-2"><div class="card-header"><div><h3>LoRaWAN / Meshtastic</h3><p>Reserved space for future radio module settings and profiles.</p></div></div><div id="lorawan-panel"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="service-overlay" class="overlay" onclick="dismissOverlay(event, 'service-overlay')">
+    <div class="overlay-card">
+      <div class="overlay-head">
+        <div><h3 id="overlay-title">Service</h3><p id="overlay-subtitle" class="muted">Details</p></div>
+        <button class="secondary" onclick="closeServiceOverlay()">Close</button>
+      </div>
+      <div id="overlay-body"></div>
+    </div>
+  </div>
+
+  <div id="command-overlay" class="overlay" onclick="dismissOverlay(event, 'command-overlay')">
+    <div class="overlay-card">
+      <div class="overlay-head">
+        <div><h3 id="command-title">Preview</h3><p id="command-subtitle" class="muted">Review and run</p></div>
+        <button class="secondary" onclick="closeCommandOverlay()">Close</button>
+      </div>
+      <div class="route">
+        <div class="label">Editable Request Payload</div>
+        <textarea id="command-payload"></textarea>
+      </div>
+      <div class="route">
+        <div class="label">Commands That Will Run</div>
+        <div class="code-box"><pre id="command-preview"></pre></div>
+      </div>
+      <div class="controls">
+        <button id="command-run">Run</button>
+        <button class="secondary" onclick="refreshCommandPreview()">Refresh Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="text-overlay" class="overlay" onclick="dismissOverlay(event, 'text-overlay')">
+    <div class="overlay-card">
+      <div class="overlay-head">
+        <div><h3 id="text-overlay-title">Details</h3><p id="text-overlay-subtitle" class="muted">Text view</p></div>
+        <button class="secondary" onclick="closeTextOverlay()">Close</button>
+      </div>
+      <div class="code-box"><pre id="text-overlay-body"></pre></div>
+    </div>
+  </div>
+</body>
+</html>

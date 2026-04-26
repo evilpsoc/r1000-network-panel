@@ -1,832 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>R1000 Device Admin</title>
-  <style>
-    :root {
-      --bg: #071018;
-      --bg-soft: #0b141d;
-      --panel: rgba(14, 22, 32, 0.9);
-      --panel-strong: rgba(9, 15, 24, 0.96);
-      --panel-soft: rgba(20, 30, 42, 0.78);
-      --line: rgba(154, 166, 181, 0.16);
-      --text: #eef4f8;
-      --muted: #92a0ad;
-      --primary: #1d9bf0;
-      --primary-2: #1677d2;
-      --accent: #27d17f;
-      --accent-soft: rgba(39, 209, 127, 0.14);
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
-    }
-    body[data-theme="light"] {
-      --bg: #edf2f6;
-      --bg-soft: #f7fafc;
-      --panel: rgba(255, 255, 255, 0.9);
-      --panel-strong: rgba(255, 255, 255, 0.98);
-      --panel-soft: rgba(239, 244, 248, 0.9);
-      --line: rgba(71, 85, 105, 0.12);
-      --text: #17212c;
-      --muted: #687684;
-      --accent-soft: rgba(39, 209, 127, 0.12);
-      --shadow: 0 16px 36px rgba(24, 32, 42, 0.08);
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; }
-    body {
-      color: var(--text);
-      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
-      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
-    }
-    button, input, select, textarea { font: inherit; }
-    body[data-auth="locked"] .shell,
-    body[data-auth="locked"] .overlay {
-      display: none;
-    }
-    body[data-auth="unlocked"] .login-screen {
-      display: none;
-    }
-    .login-screen {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 22px;
-      background: linear-gradient(145deg, #071018 0%, #0d1822 48%, #111c27 100%);
-    }
-    .login-panel {
-      width: min(960px, 100%);
-      min-height: 560px;
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      overflow: hidden;
-      border: 1px solid rgba(166, 188, 211, 0.2);
-      border-radius: 28px;
-      background: #0b111b;
-      box-shadow: 0 36px 80px rgba(0, 0, 0, 0.38);
-    }
-    .login-brand {
-      padding: 36px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      background: linear-gradient(180deg, #111c29 0%, #0d1520 100%);
-      border-right: 1px solid rgba(166, 188, 211, 0.16);
-    }
-    .login-brand h1 {
-      margin: 0;
-      font-size: clamp(32px, 6vw, 58px);
-      line-height: 0.96;
-      letter-spacing: 0;
-      color: #f4f8fb;
-      font-weight: 800;
-    }
-    .login-brand p {
-      max-width: 520px;
-      margin: 18px 0 0;
-      color: #c5d2df;
-      line-height: 1.6;
-    }
-    .login-status-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-    .login-status {
-      padding: 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(166, 188, 211, 0.18);
-      background: rgba(255, 255, 255, 0.07);
-    }
-    .login-status .label { color: #9fb0c0; }
-    .login-status .value { color: #eef5fa; }
-    .login-form {
-      padding: 36px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 16px;
-      background: #090e18;
-    }
-    .login-form h2 { margin: 0; font-size: 28px; color: #f4f8fb; }
-    .login-form p { margin: 0; color: #c5d2df; line-height: 1.5; }
-    .login-form .label {
-      color: #aebdcc;
-    }
-    .login-form input {
-      border-color: rgba(166, 188, 211, 0.24);
-      background: #121d2a;
-      color: #f4f8fb;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    }
-    .login-form input::placeholder {
-      color: #7f8d9b;
-    }
-    .login-form input:-webkit-autofill,
-    .login-form input:-webkit-autofill:hover,
-    .login-form input:-webkit-autofill:focus {
-      -webkit-text-fill-color: #f4f8fb;
-      box-shadow: 0 0 0 1000px #121d2a inset, 0 0 0 3px rgba(29, 155, 240, 0.14);
-      transition: background-color 9999s ease-out;
-    }
-    .login-form input:focus {
-      border-color: rgba(78, 167, 255, 0.72);
-      box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.16);
-    }
-    .login-error {
-      min-height: 18px;
-      color: #fecaca;
-      font-size: 13px;
-    }
-    .shell {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 252px 1fr;
-    }
-    .sidebar {
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      padding: 18px 14px;
-      background: rgba(7, 12, 18, 0.94);
-      border-right: 1px solid var(--line);
-      backdrop-filter: blur(20px);
-    }
-    body[data-theme="light"] .sidebar {
-      background: rgba(244, 248, 252, 0.88);
-    }
-    .brand {
-      padding: 8px 8px 12px;
-      border-bottom: 1px solid var(--line);
-    }
-    .brand h1 { margin: 0; font-size: 20px; letter-spacing: 0; }
-    .brand p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
-    .nav-group { display: grid; gap: 8px; }
-    .nav-button {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      padding: 11px 12px;
-      border-radius: 12px;
-      border: 1px solid transparent;
-      color: var(--text);
-      background: transparent;
-      cursor: pointer;
-      text-align: left;
-    }
-    .nav-button:hover, .nav-button.active {
-      background: rgba(29, 155, 240, 0.12);
-      border-color: rgba(29, 155, 240, 0.28);
-    }
-    .nav-label { font-weight: 700; }
-    .nav-hint { color: var(--muted); font-size: 12px; }
-    .sidebar-spacer { flex: 1; }
-    .sidebar-foot, .sidebar-system {
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: var(--panel);
-      box-shadow: var(--shadow);
-    }
-    .refresh-state {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: #64748b;
-    }
-    .dot.live {
-      background: var(--accent);
-      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
-    }
-    .dot.pause {
-      background: var(--warn);
-      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
-    }
-    .main {
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 14px 0;
-      background: linear-gradient(180deg, var(--bg) 65%, rgba(7, 16, 24, 0));
-    }
-    .toolbar-main h2 { margin: 0; font-size: 28px; letter-spacing: 0; }
-    .toolbar-main p { margin: 6px 0 0; color: var(--muted); }
-    .toolbar-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .chip, .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 8px 12px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .badge.session-count {
-      min-width: 36px;
-      justify-content: center;
-      font-weight: 700;
-    }
-    .badge.session-count.idle {
-      background: rgba(100, 116, 139, 0.14);
-      color: #94a3b8;
-    }
-    .badge.session-count.low {
-      background: rgba(14, 165, 233, 0.14);
-      color: #7dd3fc;
-    }
-    .badge.session-count.busy {
-      background: rgba(249, 115, 22, 0.16);
-      color: #fdba74;
-    }
-    body[data-theme="light"] .badge.session-count.idle { color: #64748b; }
-    body[data-theme="light"] .badge.session-count.low { color: #0369a1; }
-    body[data-theme="light"] .badge.session-count.busy { color: #c2410c; }
-    .section-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      border: 1px solid rgba(34, 197, 94, 0.24);
-      color: #8ff0af;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    body[data-theme="light"] .section-pill { color: #166534; }
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 10px 14px;
-      cursor: pointer;
-      color: white;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
-      box-shadow: 0 10px 22px rgba(29, 155, 240, 0.2);
-    }
-    button.secondary {
-      background: var(--panel-soft);
-      color: var(--text);
-      border: 1px solid var(--line);
-      box-shadow: none;
-    }
-    button.warn {
-      background: linear-gradient(135deg, #f97316, #ea580c);
-      box-shadow: 0 12px 24px rgba(234, 88, 12, 0.18);
-    }
-    button.danger {
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      box-shadow: 0 12px 24px rgba(220, 38, 38, 0.18);
-    }
-    .page { display: none; }
-    .page.active { display: block; }
-    .grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-    }
-    .grid.operational {
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-    .span-2 { grid-column: span 2; }
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    .card-header h3 { margin: 0; font-size: 18px; }
-    .card-header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
-    .stat-grid {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
-    }
-    .stat-grid.wide {
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    }
-    .metric {
-      min-height: 76px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.1);
-      background: var(--panel-soft);
-    }
-    .label {
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    .value {
-      margin-top: 6px;
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.3;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .value.small { font-size: 14px; }
-    .muted {
-      color: var(--muted);
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .route, .list-box {
-      margin-top: 10px;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      background: rgba(7, 12, 21, 0.44);
-    }
-    body[data-theme="light"] .route, body[data-theme="light"] .list-box {
-      background: rgba(250, 252, 255, 0.76);
-    }
-    .controls {
-      margin-top: 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .inline-controls {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    input, select, textarea {
-      width: 100%;
-      margin-top: 6px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      background: rgba(2, 6, 23, 0.82);
-      color: var(--text);
-    }
-    textarea {
-      min-height: 144px;
-      resize: vertical;
-      font-family: "Cascadia Code", "SFMono-Regular", monospace;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-    body[data-theme="light"] input,
-    body[data-theme="light"] select,
-    body[data-theme="light"] textarea {
-      background: rgba(253, 254, 255, 0.9);
-    }
-    input:focus, select:focus, textarea:focus {
-      outline: none;
-      border-color: rgba(56, 189, 248, 0.44);
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
-    }
-    .hint { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.55; }
-    .item-list, .service-list { display: grid; gap: 10px; }
-    .service-list { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-    .item {
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      background: rgba(7, 12, 21, 0.56);
-    }
-    body[data-theme="light"] .item { background: rgba(251, 253, 255, 0.7); }
-    .item-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .item-title {
-      font-weight: 700;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .service-card {
-      cursor: pointer;
-      transition: transform 180ms ease, border-color 180ms ease;
-    }
-    .service-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(56, 189, 248, 0.28);
-    }
-    .tag-row {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
-    .mini-tag {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: rgba(14, 165, 233, 0.08);
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .switch-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-    }
-    .switch {
-      position: relative;
-      width: 52px;
-      height: 30px;
-      flex: 0 0 auto;
-    }
-    .switch.busy {
-      opacity: 0.55;
-      pointer-events: none;
-    }
-    .switch input { display: none; }
-    .slider {
-      position: absolute;
-      inset: 0;
-      border-radius: 999px;
-      background: rgba(100, 116, 139, 0.5);
-      transition: 180ms ease;
-      cursor: pointer;
-    }
-    .slider::before {
-      content: "";
-      position: absolute;
-      width: 22px;
-      height: 22px;
-      left: 4px;
-      top: 4px;
-      border-radius: 999px;
-      background: white;
-      transition: 180ms ease;
-      box-shadow: 0 4px 10px rgba(2, 6, 23, 0.22);
-    }
-    .switch input:checked + .slider {
-      background: linear-gradient(135deg, var(--accent), #16a34a);
-    }
-    .switch input:checked + .slider::before {
-      transform: translateX(22px);
-    }
-    .overlay {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      background: rgba(2, 6, 23, 0.62);
-      backdrop-filter: blur(8px);
-      z-index: 1000;
-    }
-    .overlay.open { display: flex; }
-    .overlay-card {
-      width: min(920px, 100%);
-      max-height: 88vh;
-      overflow: auto;
-      padding: 18px;
-      border-radius: 24px;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      background: var(--panel-strong);
-      box-shadow: 0 28px 60px rgba(2, 6, 23, 0.4);
-    }
-    .overlay-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    .overlay-head h3 { margin: 0; font-size: 22px; }
-    pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: "Cascadia Code", "SFMono-Regular", monospace;
-      font-size: 12px;
-      line-height: 1.55;
-    }
-    .code-box {
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.12);
-      background: rgba(2, 6, 23, 0.76);
-      margin-top: 10px;
-    }
-    .section-title {
-      margin: 0 0 10px;
-      font-size: 15px;
-      color: var(--muted);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    @media (max-width: 1180px) {
-      .shell { grid-template-columns: 1fr; }
-      .sidebar {
-        position: static;
-        height: auto;
-      }
-      .nav-group { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-      .span-2 { grid-column: span 1; }
-    }
-    @media (max-width: 860px) {
-      .login-panel {
-        grid-template-columns: 1fr;
-        min-height: auto;
-      }
-      .login-brand {
-        border-right: none;
-        border-bottom: 1px solid rgba(154, 166, 181, 0.12);
-      }
-      .login-status-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 640px) {
-      .main { padding: 12px; }
-      .sidebar { padding: 12px; }
-      .toolbar-main h2 { font-size: 24px; }
-      .toolbar { position: static; padding: 0; }
-      .grid, .grid.operational, .stat-grid, .stat-grid.wide, .service-list {
-        grid-template-columns: 1fr;
-      }
-      .card { padding: 12px; border-radius: 16px; }
-      .nav-group { grid-template-columns: 1fr 1fr; }
-      .nav-button { padding: 10px; border-radius: 12px; }
-      .nav-hint { display: none; }
-    }
-  </style>
-</head>
-<body data-theme="dark" data-auth="locked">
-  <section class="login-screen">
-    <div class="login-panel">
-      <div class="login-brand">
-        <div>
-          <span class="section-pill">Network Console</span>
-          <h1>R1000 Device Admin</h1>
-          <p>Secure access to LAN policy, uplinks, services, storage and device I/O from one operational control plane.</p>
-        </div>
-        <div class="login-status-grid">
-          <div class="login-status"><div class="label">Device</div><div class="value small">R1035-10</div></div>
-          <div class="login-status"><div class="label">Mode</div><div class="value small">Edge</div></div>
-          <div class="login-status"><div class="label">Access</div><div class="value small">Local</div></div>
-        </div>
-      </div>
-      <form class="login-form" onsubmit="login(event)">
-        <div>
-          <h2>Sign in</h2>
-          <p>Use the panel credentials configured on this device.</p>
-        </div>
-        <label>
-          <span class="label">Username</span>
-          <input id="login-username" autocomplete="username" value="admin" />
-        </label>
-        <label>
-          <span class="label">Password</span>
-          <input id="login-password" type="password" autocomplete="current-password" autofocus />
-        </label>
-        <div id="login-error" class="login-error"></div>
-        <button type="submit">Sign In</button>
-      </form>
-    </div>
-  </section>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <h1>R1000 Device Admin</h1>
-        <p>Modern device control for network, wireless, storage, services and future radio modules.</p>
-      </div>
-      <div class="nav-group">
-        <button class="nav-button" data-view="dashboard" onclick="setView('dashboard')"><span><div class="nav-label">Dashboard</div><div class="nav-hint">Overview, health and quick status</div></span></button>
-        <button class="nav-button" data-view="network" onclick="setView('network')"><span><div class="nav-label">Network</div><div class="nav-hint">LAN roles, clients and interfaces</div></span></button>
-        <button class="nav-button" data-view="wireless" onclick="setView('wireless')"><span><div class="nav-label">Wireless</div><div class="nav-hint">Wi-Fi mode, scan and hotspot</div></span></button>
-        <button class="nav-button" data-view="cellular" onclick="setView('cellular')"><span><div class="nav-label">Cellular</div><div class="nav-hint">Signal, APN, raw profile and AT tools</div></span></button>
-        <button class="nav-button" data-view="monitoring" onclick="setView('monitoring')"><span><div class="nav-label">Monitoring</div><div class="nav-hint">Pi-hole, NetAlertX and network visibility</div></span></button>
-        <button class="nav-button" data-view="services" onclick="setView('services')"><span><div class="nav-label">Services</div><div class="nav-hint">Local listeners and service entry points</div></span></button>
-        <button class="nav-button" data-view="filesharing" onclick="setView('filesharing')"><span><div class="nav-label">File Sharing</div><div class="nav-hint">Samba shares, printing and future NFS</div></span></button>
-        <button class="nav-button" data-view="users" onclick="setView('users')"><span><div class="nav-label">Users</div><div class="nav-hint">Samba accounts and access users</div></span></button>
-        <button class="nav-button" data-view="filesystem" onclick="setView('filesystem')"><span><div class="nav-label">File System</div><div class="nav-hint">Mounts, disks and external storage</div></span></button>
-        <button class="nav-button" data-view="deviceio" onclick="setView('deviceio')"><span><div class="nav-label">Device I/O</div><div class="nav-hint">LEDs, serial ports and GPIO chips</div></span></button>
-        <button class="nav-button" data-view="lorawan" onclick="setView('lorawan')"><span><div class="nav-label">LoRaWAN</div><div class="nav-hint">Reserved for future radio modules</div></span></button>
-      </div>
-      <div class="sidebar-spacer"></div>
-      <div class="sidebar-foot">
-        <div class="refresh-state"><span id="refresh-dot" class="dot live"></span><span id="refresh-state">Auto refresh live</span></div>
-        <div class="hint" id="refresh-detail">Forms stay local while you are editing, then background refresh resumes.</div>
-        <div class="controls">
-          <button class="secondary" onclick="toggleTheme()">Theme</button>
-          <button class="secondary" onclick="render()">Sync Now</button>
-          <button class="secondary" onclick="logout()">Logout</button>
-        </div>
-      </div>
-      <div class="sidebar-system">
-        <div class="section-title">System</div>
-        <div class="controls">
-          <button class="secondary" onclick="restartSystem()">Restart</button>
-          <button class="danger" onclick="powerOffSystem()">Power Off</button>
-        </div>
-      </div>
-    </aside>
+import './styles.css';
 
-    <main class="main">
-      <div class="toolbar">
-        <div class="toolbar-main">
-          <h2 id="page-title">Dashboard</h2>
-          <p id="page-subtitle">Device overview, usage and quick health.</p>
-        </div>
-        <div class="toolbar-actions">
-          <span id="theme-chip" class="chip">Theme: dark</span>
-          <span id="last-sync" class="chip">Waiting for first sync</span>
-        </div>
-      </div>
-
-      <section id="page-dashboard" class="page">
-        <div class="grid">
-          <div class="card span-2">
-            <div class="card-header"><div><h3>Device Overview</h3><p>Identity, usage, routes and current local access.</p></div><span class="section-pill">Home</span></div>
-            <div id="overview">Loading...</div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div><h3>Docker Brief</h3><p>Running containers and quick service pulse.</p></div></div>
-            <div id="docker-brief">Loading...</div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div><h3>Live Sessions</h3><p>Recent SSH, dashboard and local service sessions.</p></div><span id="dashboard-session-count" class="badge session-count idle">0</span></div>
-            <div id="dashboard-sessions">Loading...</div>
-          </div>
-        </div>
-      </section>
-
-      <section id="page-network" class="page">
-        <div class="grid">
-          <div class="card"><div class="card-header"><div><h3>Main LAN</h3><p>Trusted local network and homelab segment.</p></div></div><div id="main-lan">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Service LAN</h3><p>Isolated service or client network with independent policy.</p></div></div><div id="service-lan">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>Interfaces</h3><p>Grouped by role so physical and virtual links are easier to scan.</p></div></div><div id="interfaces">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>Connected Clients</h3><p>Detected LAN clients and where they are attached.</p></div></div><div id="service-lan-clients">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-wireless" class="page">
-        <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>Wireless</h3><p>Client mode, hotspot mode, radio power and per-Wi-Fi Pi-hole policy.</p></div></div><div id="wifi-panel">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-cellular" class="page">
-        <div class="grid">
-          <div class="card"><div class="card-header"><div><h3>Cellular State</h3><p>Registration, signal and modem health.</p></div></div><div id="cellular-state">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Cellular APN</h3><p>Preset profile editor, raw profile view and auto apply.</p></div></div><div id="cellular-apn">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>AT Command Line</h3><p>Direct modem commands with guardrails. Use carefully.</p></div></div><div id="cellular-at">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-monitoring" class="page">
-        <div class="grid operational">
-          <div class="card"><div class="card-header"><div><h3>Pi-hole</h3><p>Per-network toggles, status and forwarding visibility.</p></div></div><div id="pihole-panel">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>NetAlertX</h3><p>Network discovery, map view and install controls.</p></div></div><div id="netalert-panel">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>Network State</h3><p>Compact status across uplink, LANs, Wi-Fi, sessions and discovery scope.</p></div></div><div id="topology-panel">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-services" class="page">
-        <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>Services</h3><p>Detected listeners with docker/system tags and compact cards.</p></div></div><div id="services">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-filesharing" class="page">
-        <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>Samba Shares</h3><p>Shares, guest policy and portal managed config.</p></div></div><div id="samba-panel">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Printing</h3><p>CUPS state and printer share status.</p></div></div><div id="printing-panel">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-users" class="page">
-        <div class="grid">
-          <div class="card"><div class="card-header"><div><h3>Panel Login</h3><p>Admin account used for this web panel.</p></div></div>
-            <label>
-              <span class="label">Username</span>
-              <input id="account-username" autocomplete="username" />
-            </label>
-            <label>
-              <span class="label">Current Password</span>
-              <input id="account-current-password" type="password" autocomplete="current-password" />
-            </label>
-            <label>
-              <span class="label">New Password</span>
-              <input id="account-new-password" type="password" autocomplete="new-password" placeholder="Leave empty to keep current" />
-            </label>
-            <div id="account-message" class="hint"></div>
-            <div class="controls">
-              <button class="secondary" onclick="updateCredentials()">Save Account</button>
-            </div>
-          </div>
-          <div class="card span-2"><div class="card-header"><div><h3>Samba Users</h3><p>SMB account creation, password updates and access state.</p></div></div><div id="samba-users-panel">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-filesystem" class="page">
-        <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>File System</h3><p>Disk layout, mounts and removable media visibility.</p></div></div><div id="filesystem-panel">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-deviceio" class="page">
-        <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>Device I/O</h3><p>Kernel-visible LEDs, serial ports and GPIO controllers.</p></div></div><div id="deviceio-panel">Loading...</div></div>
-        </div>
-      </section>
-
-      <section id="page-lorawan" class="page">
-        <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>LoRaWAN / Meshtastic</h3><p>Reserved space for future radio module settings and profiles.</p></div></div><div id="lorawan-panel"></div></div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div id="service-overlay" class="overlay" onclick="dismissOverlay(event, 'service-overlay')">
-    <div class="overlay-card">
-      <div class="overlay-head">
-        <div><h3 id="overlay-title">Service</h3><p id="overlay-subtitle" class="muted">Details</p></div>
-        <button class="secondary" onclick="closeServiceOverlay()">Close</button>
-      </div>
-      <div id="overlay-body"></div>
-    </div>
-  </div>
-
-  <div id="command-overlay" class="overlay" onclick="dismissOverlay(event, 'command-overlay')">
-    <div class="overlay-card">
-      <div class="overlay-head">
-        <div><h3 id="command-title">Preview</h3><p id="command-subtitle" class="muted">Review and run</p></div>
-        <button class="secondary" onclick="closeCommandOverlay()">Close</button>
-      </div>
-      <div class="route">
-        <div class="label">Editable Request Payload</div>
-        <textarea id="command-payload"></textarea>
-      </div>
-      <div class="route">
-        <div class="label">Commands That Will Run</div>
-        <div class="code-box"><pre id="command-preview"></pre></div>
-      </div>
-      <div class="controls">
-        <button id="command-run">Run</button>
-        <button class="secondary" onclick="refreshCommandPreview()">Refresh Preview</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="text-overlay" class="overlay" onclick="dismissOverlay(event, 'text-overlay')">
-    <div class="overlay-card">
-      <div class="overlay-head">
-        <div><h3 id="text-overlay-title">Details</h3><p id="text-overlay-subtitle" class="muted">Text view</p></div>
-        <button class="secondary" onclick="closeTextOverlay()">Close</button>
-      </div>
-      <div class="code-box"><pre id="text-overlay-body"></pre></div>
-    </div>
-  </div>
-
-  <script>
     const appState = {
       drafts: {},
       activeView: sessionStorage.getItem('portal.activeView') || 'dashboard',
@@ -844,6 +17,7 @@
       wireless: { title: 'Wireless', subtitle: 'Wi-Fi scan, hotspot, radio power and wireless DNS policy.' },
       cellular: { title: 'Cellular', subtitle: 'Modem signal, APN editor, raw profile and AT command tools.' },
       monitoring: { title: 'Monitoring', subtitle: 'Pi-hole, NetAlertX and network visibility tools.' },
+      logs: { title: 'Logs', subtitle: 'Recent panel, network and service activity.' },
       services: { title: 'Services', subtitle: 'Compact service discovery with docker/system source tags.' },
       filesharing: { title: 'File Sharing', subtitle: 'Samba shares, printing and future NFS style expansion.' },
       users: { title: 'Users', subtitle: 'Samba account and access management.' },
@@ -863,6 +37,18 @@
       'wifi.ipv6_method',
     ]);
     const AUTO_REFRESH_MS = 30000;
+    const DEMO_MODE = new URLSearchParams(window.location.search).get('demo') === '1';
+    const DEMO_PLACEHOLDERS = {
+      hostname: 'recomputer-r1000',
+      ipv4: '10.0.0.100',
+      gateway: '10.0.0.1',
+      tailscale: '100.x.x.x',
+      ipv6: 'fe80::demo',
+      mac: '00:00:00:00:00:00',
+      ssid: 'example-wifi',
+      username: 'demo-user',
+      port: '443',
+    };
 
     function draftValue(key, fallback) {
       return Object.prototype.hasOwnProperty.call(appState.drafts, key) ? appState.drafts[key] : (fallback ?? '');
@@ -902,10 +88,73 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
     }
+    function demoMaskText(value) {
+      if (!DEMO_MODE) return String(value ?? '');
+      return String(value ?? '')
+        .replace(/\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b/gi, DEMO_PLACEHOLDERS.mac)
+        .replace(/\b100\.(?:\d{1,3}\.){2}\d{1,3}(?:\/\d{1,2})?\b/g, DEMO_PLACEHOLDERS.tailscale)
+        .replace(/\b(?:via|gateway|gw)\s+((?:\d{1,3}\.){3}\d{1,3})(?:\/\d{1,2})?\b/gi, match => match.replace(/(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?/, DEMO_PLACEHOLDERS.gateway))
+        .replace(/\b(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?\b/g, DEMO_PLACEHOLDERS.ipv4)
+        .replace(/\b(?=[0-9a-f:]*[a-f][0-9a-f:]*\b|[0-9a-f:]*::)(?:[0-9a-f]{1,4}:){2,}[0-9a-f:]{0,39}(?:\/\d{1,3})?\b/gi, DEMO_PLACEHOLDERS.ipv6)
+        .replace(/\/home\/[A-Za-z0-9._-]+/g, `/home/${DEMO_PLACEHOLDERS.username}`)
+        .replace(/\b(user|username|users)\s*[:=]\s*[A-Za-z0-9._-]+/gi, `$1: ${DEMO_PLACEHOLDERS.username}`);
+    }
+    function demoMaskValue(value, key = '') {
+      if (!DEMO_MODE) return value;
+      if (value === null || value === undefined || typeof value === 'boolean' || typeof value === 'number') return value;
+      const raw = String(value);
+      const normalizedKey = String(key || '').toLowerCase();
+      if (normalizedKey.includes('hostname')) return DEMO_PLACEHOLDERS.hostname;
+      if (normalizedKey.includes('ssid')) return DEMO_PLACEHOLDERS.ssid;
+      if (normalizedKey === 'username' || normalizedKey.includes('valid_users')) return DEMO_PLACEHOLDERS.username;
+      if (normalizedKey.includes('mac')) return DEMO_PLACEHOLDERS.mac;
+      if (normalizedKey === 'peer_port' || normalizedKey === 'local_port') return DEMO_PLACEHOLDERS.port;
+      if (normalizedKey.includes('tailscale') || raw.startsWith('100.')) return DEMO_PLACEHOLDERS.tailscale;
+      if (normalizedKey.includes('ipv6') || raw.includes(':')) return demoMaskText(raw);
+      if (normalizedKey.includes('gateway') || normalizedKey === 'via') return DEMO_PLACEHOLDERS.gateway;
+      if (/(ipv4|address|subnet|prefix|src|ip|bind|dns|route|target)/.test(normalizedKey)) return demoMaskText(raw);
+      if (/(message|stdout|stderr|raw|profile|path|description|notes)/.test(normalizedKey)) return demoMaskText(raw);
+      return demoMaskText(raw);
+    }
+    function demoMaskData(value, key = '') {
+      if (!DEMO_MODE) return value;
+      if (Array.isArray(value)) return value.map(item => demoMaskData(item, key));
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([childKey, childValue]) => [childKey, demoMaskData(childValue, childKey)]));
+      }
+      return demoMaskValue(value, key);
+    }
+    function demoMaskPayload(payload) {
+      return JSON.stringify(demoMaskData(payload || {}), null, 2);
+    }
+    function applyDemoMaskToDom() {
+      if (!DEMO_MODE) return;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(node => {
+        node.nodeValue = demoMaskText(node.nodeValue);
+      });
+      document.querySelectorAll('input, textarea').forEach(input => {
+        const id = input.id || '';
+        if (input.type === 'password') {
+          input.value = input.value ? 'demo-password' : '';
+        } else if (/username|user/i.test(id)) {
+          input.value = input.value ? DEMO_PLACEHOLDERS.username : input.value;
+        } else if (/ssid/i.test(id)) {
+          input.value = input.value ? DEMO_PLACEHOLDERS.ssid : input.value;
+        } else if (/ipv4|gateway|subnet|dns|ip|address|payload|preview/i.test(id)) {
+          input.value = demoMaskText(input.value);
+        }
+      });
+    }
+    function safeText(value, key = '') {
+      return escapeHtml(demoMaskValue(value, key));
+    }
     function setAuthState(authenticated) {
       document.body.dataset.auth = authenticated ? 'unlocked' : 'locked';
       const accountUsername = document.getElementById('account-username');
-      if (accountUsername && appState.authUsername) accountUsername.value = appState.authUsername;
+      if (accountUsername && appState.authUsername) accountUsername.value = demoMaskValue(appState.authUsername, 'username');
       if (!authenticated) {
         const password = document.getElementById('login-password');
         if (password) password.value = '';
@@ -1027,31 +276,55 @@
       if (dot) dot.className = `dot ${editing ? 'pause' : 'live'}`;
       if (label) label.textContent = editing ? 'Auto refresh paused while editing' : 'Auto refresh live';
       if (detail) detail.textContent = editing ? 'Draft values stay local until you save or run them.' : 'The page refreshes in the background every 30 seconds.';
-      document.getElementById('theme-chip').textContent = `Theme: ${document.body.dataset.theme}`;
       if (appState.lastSyncAt) document.getElementById('last-sync').textContent = `Last sync ${new Date(appState.lastSyncAt).toLocaleTimeString()}`;
     }
     function setView(view) {
       appState.activeView = view;
       sessionStorage.setItem('portal.activeView', view);
+      closeNavMenus();
       Object.entries(VIEW_META).forEach(([key, meta]) => {
         const page = document.getElementById(`page-${key}`);
-        const button = document.querySelector(`.nav-button[data-view="${key}"]`);
+        const buttons = document.querySelectorAll(`[data-view="${key}"]`);
         if (page) page.classList.toggle('active', key === view);
-        if (button) button.classList.toggle('active', key === view);
+        buttons.forEach(button => button.classList.toggle('active', key === view));
         if (key === view) {
           document.getElementById('page-title').textContent = meta.title;
           document.getElementById('page-subtitle').textContent = meta.subtitle;
+          const navContext = document.getElementById('nav-context');
+          if (navContext) navContext.textContent = meta.title.toLowerCase().replace(/\s+/g, '-');
         }
       });
     }
+    function closeNavMenus() {
+      document.querySelectorAll('.nav-menu.open').forEach(menu => menu.classList.remove('open'));
+    }
+    function bindNavMenus() {
+      document.querySelectorAll('.nav-menu > .nav-trigger').forEach(trigger => {
+        const menu = trigger.closest('.nav-menu');
+        if (!menu || !menu.querySelector('.mega-menu')) return;
+        trigger.addEventListener('click', event => {
+          event.stopPropagation();
+          const wasOpen = menu.classList.contains('open');
+          closeNavMenus();
+          menu.classList.toggle('open', !wasOpen);
+        });
+      });
+      document.querySelectorAll('.mega-menu').forEach(menu => {
+        menu.addEventListener('click', event => event.stopPropagation());
+      });
+      document.addEventListener('click', closeNavMenus);
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeNavMenus();
+      });
+    }
     function loadTheme() {
-      const theme = localStorage.getItem('portal.theme') || 'dark';
-      document.body.dataset.theme = theme;
+      document.body.dataset.theme = 'dark';
+      localStorage.setItem('portal.theme', 'dark');
       updateRefreshState();
     }
     function toggleTheme() {
-      document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('portal.theme', document.body.dataset.theme);
+      document.body.dataset.theme = 'dark';
+      localStorage.setItem('portal.theme', 'dark');
       updateRefreshState();
     }
     function getUptimeMode() {
@@ -1076,12 +349,12 @@
     function openServiceOverlay(id) {
       const service = appState.serviceDetails[id];
       if (!service) return;
-      document.getElementById('overlay-title').textContent = service.title || 'Service';
-      document.getElementById('overlay-subtitle').textContent = service.subtitle || 'Details';
+      document.getElementById('overlay-title').textContent = demoMaskText(service.title || 'Service');
+      document.getElementById('overlay-subtitle').textContent = demoMaskText(service.subtitle || 'Details');
       document.getElementById('overlay-body').innerHTML = `
-        <div class="stat-grid">${Object.entries(service.details || {}).map(([k, v]) => `<div class="metric"><div class="label">${escapeHtml(k)}</div><div class="value small">${escapeHtml(v)}</div></div>`).join('')}</div>
+        <div class="stat-grid">${Object.entries(service.details || {}).map(([k, v]) => `<div class="metric"><div class="label">${safeText(k)}</div><div class="value small">${safeText(v, k)}</div></div>`).join('')}</div>
         ${service.url ? `<div class="controls"><a class="chip" href="${service.url}" target="_blank" rel="noreferrer">Open service</a></div>` : ''}
-        ${service.notes ? `<div class="hint">${escapeHtml(service.notes)}</div>` : ''}
+        ${service.notes ? `<div class="hint">${safeText(service.notes, 'notes')}</div>` : ''}
       `;
       document.getElementById('service-overlay').classList.add('open');
     }
@@ -1095,7 +368,7 @@
     function openTextOverlay(title, subtitle, text) {
       document.getElementById('text-overlay-title').textContent = title || 'Details';
       document.getElementById('text-overlay-subtitle').textContent = subtitle || 'Text view';
-      document.getElementById('text-overlay-body').textContent = text || 'No content available.';
+      document.getElementById('text-overlay-body').textContent = demoMaskText(text || 'No content available.');
       document.getElementById('text-overlay').classList.add('open');
       updateRefreshState();
     }
@@ -1111,6 +384,7 @@
     }
     function closeCommandOverlay() {
       document.getElementById('command-overlay').classList.remove('open');
+      document.getElementById('command-run').disabled = false;
       appState.commandContext = null;
       updateRefreshState();
     }
@@ -1118,7 +392,8 @@
       appState.commandContext = { title, previewUrl, runner };
       document.getElementById('command-title').textContent = title;
       document.getElementById('command-subtitle').textContent = subtitle;
-      document.getElementById('command-payload').value = JSON.stringify(payload || {}, null, 2);
+      document.getElementById('command-payload').value = DEMO_MODE ? demoMaskPayload(payload) : JSON.stringify(payload || {}, null, 2);
+      document.getElementById('command-run').disabled = DEMO_MODE;
       document.getElementById('command-run').onclick = async () => {
         try {
           const parsed = JSON.parse(document.getElementById('command-payload').value || '{}');
@@ -1134,6 +409,10 @@
     }
     async function refreshCommandPreview() {
       if (!appState.commandContext) return;
+      if (DEMO_MODE) {
+        document.getElementById('command-preview').textContent = demoMaskText('Demo mode: command preview is masked and no backend preview request is sent.');
+        return;
+      }
       let payload = {};
       try { payload = JSON.parse(document.getElementById('command-payload').value || '{}'); } catch (err) {
         document.getElementById('command-preview').textContent = 'Payload JSON is invalid';
@@ -1145,9 +424,9 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        document.getElementById('command-preview').textContent = (preview.commands || []).join('\n');
+        document.getElementById('command-preview').textContent = demoMaskText((preview.commands || []).join('\n'));
       } catch (err) {
-        document.getElementById('command-preview').textContent = err.message || 'Unable to build command preview';
+        document.getElementById('command-preview').textContent = demoMaskText(err.message || 'Unable to build command preview');
       }
     }
     function serviceCardMarkup(id, title, state, summary, details, tags = [], url = '', subtitle = '', notes = '') {
@@ -1388,12 +667,12 @@
       if (!command) return;
       try {
         const result = await fetchJSON('/api/lte/at', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command }) });
-        document.getElementById('at-output').textContent = [result.stdout, result.stderr].filter(Boolean).join('\n') || 'OK';
+        document.getElementById('at-output').textContent = demoMaskText([result.stdout, result.stderr].filter(Boolean).join('\n') || 'OK');
       } catch (err) {
         const message = String(err.message || 'AT command failed');
         document.getElementById('at-output').textContent = message.includes('debug mode')
-          ? `${message}\n\nHost note: ModemManager must allow debug AT commands first. Regular status queries will still work without it.`
-          : message;
+          ? demoMaskText(`${message}\n\nHost note: ModemManager must allow debug AT commands first. Regular status queries will still work without it.`)
+          : demoMaskText(message);
       }
     }
     function collectMainLanPayload() {
@@ -1456,12 +735,74 @@
         remember: document.getElementById('cellular-apn-remember').checked ? 'true' : 'false',
       };
     }
-    function renderOverview(overview, systemStats, activeSessions) {
+    function stateTone(state) {
+      const value = String(state || '').toLowerCase();
+      if (['up', 'connected', 'activated', 'online', 'active', 'yes'].some(token => value.includes(token))) return 'online';
+      if (['down', 'failed', 'offline', 'disconnected', 'no'].some(token => value.includes(token))) return 'offline';
+      return 'standby';
+    }
+    function renderFlowNode(kind, title, detail, state, positionClass) {
+      return `
+        <div class="flow-node ${kind} ${stateTone(state)} ${positionClass}">
+          <span class="flow-dot"></span>
+          <div>
+            <div class="flow-title">${escapeHtml(title)}</div>
+            <div class="flow-detail">${escapeHtml(detail || '-')}</div>
+          </div>
+        </div>
+      `;
+    }
+    function renderNetworkCanvas(overview, systemStats, activeSessions) {
+      const defaultDev = (overview.uplink_ipv4 || {}).dev || (overview.uplink_ipv6 || {}).dev || '';
+      const uplink = (overview.uplinks || []).find(i => i.name === defaultDev) || (overview.uplinks || [])[0] || {};
+      const localLans = overview.local_lans || [];
+      const lan = localLans.find(i => String(i.role || '').includes('lan')) || localLans[0] || {};
+      const wifi = (overview.uplinks || []).find(i => String(i.role || '').includes('wifi')) || localLans.find(i => String(i.name || '').startsWith('wl')) || {};
+      const docker = (systemStats.docker || {}).running ?? 0;
+      const sessions = sessionCount(activeSessions);
+      const routeLabel = defaultDev ? `${defaultDev} -> ${(overview.uplink_ipv4 || {}).via || 'default'}` : 'No default route';
+      return `
+        <div class="network-canvas" aria-label="Network flow overview">
+          <div class="flow-line flow-line-uplink"></div>
+          <div class="flow-line flow-line-lan"></div>
+          <div class="flow-line flow-line-wifi"></div>
+          <div class="flow-line flow-line-services"></div>
+          <div class="flow-packet packet-uplink"></div>
+          <div class="flow-packet packet-lan"></div>
+          <div class="flow-packet packet-services"></div>
+          ${renderFlowNode('internet', 'Internet', routeLabel, uplink.state || defaultDev, 'pos-internet')}
+          ${renderFlowNode('core', overview.hostname || 'R1000', 'Network panel gateway', 'online', 'pos-core')}
+          ${renderFlowNode('lan', 'LAN', `${lan.name || lan.interface || 'local'} / ${(lan.ipv4 || [])[0] || 'no IPv4'}`, lan.state, 'pos-lan')}
+          ${renderFlowNode('wifi', 'Wireless', `${wifi.name || wifi.interface || 'radio'} / ${wifi.role || 'standby'}`, wifi.state, 'pos-wifi')}
+          ${renderFlowNode('services', 'Services', `${docker} containers / ${sessions} sessions`, docker ? 'active' : 'standby', 'pos-services')}
+        </div>
+      `;
+    }
+    function renderStatusPill(label, state) {
+      return `<span class="status-pill ${stateTone(state)}"><span class="status-light"></span>${escapeHtml(label)}</span>`;
+    }
+    function renderInterfaceSummary(interfaces) {
+      return (interfaces || []).map(i => {
+        const role = i.role ? ` ${escapeHtml(i.role)}` : '';
+        return `<div class="line-entry"><span>${escapeHtml(i.name)}${role}</span>${renderStatusPill(i.state || '-', i.state)}</div>`;
+      }).join('') || '<span class="muted">No active uplink detected</span>';
+    }
+    function renderLanSummary(interfaces) {
+      return (interfaces || []).map(i => {
+        const addresses = `${(i.ipv4 || []).join(', ') || 'no IPv4'} | ${(i.ipv6 || []).join(', ') || 'no IPv6'}`;
+        return `<div class="line-entry"><span>${escapeHtml(i.name)}: ${escapeHtml(addresses)}</span>${renderStatusPill(i.state || '-', i.state)}</div>`;
+      }).join('') || '<span class="muted">No LAN ports detected</span>';
+    }
+    function renderClientSummary(clients) {
+      return (clients || []).length ? `<div class="item-list compact">${clients.slice(0, 6).map(c => `<div class="item client-item"><div class="item-top"><div class="item-title">${escapeHtml(c.hostname || c.mac || 'Client')}</div>${renderStatusPill(c.state || 'seen', c.state || 'online')}</div><div class="muted">IP: ${escapeHtml(c.ip || '-')} | MAC: ${escapeHtml(c.mac || '-')} | ${escapeHtml(c.interface || '-')}</div></div>`).join('')}</div>` : '<div class="muted">No service LAN clients detected</div>';
+    }
+    function renderOverview(overview, systemStats, activeSessions, serviceLanClients = []) {
       const hw = overview.hardware || {};
       const mem = systemStats.memory || {};
       const load = systemStats.load || {};
       const docker = systemStats.docker || {};
       return `
+        ${renderNetworkCanvas(overview, systemStats, activeSessions)}
         <div class="stat-grid">
           <div class="metric"><div class="label">Hostname</div><div class="value">${escapeHtml(overview.hostname)}</div></div>
           <div class="metric" onclick="cycleUptimeMode()" style="cursor:pointer;"><div class="label">Uptime</div><div class="value">${fmtUptime(overview.uptime_seconds || 0)}</div><div class="hint">Click to cycle format</div></div>
@@ -1474,8 +815,9 @@
         </div>
         <div class="route"><div class="label">IPv4 Default Route</div><div>${escapeHtml((overview.uplink_ipv4 || {}).dev || '-')} via ${escapeHtml((overview.uplink_ipv4 || {}).via || '-')} ${escapeHtml((overview.uplink_ipv4 || {}).src || '')}</div></div>
         <div class="route"><div class="label">IPv6 Default Route</div><div>${escapeHtml((overview.uplink_ipv6 || {}).dev || '-')} via ${escapeHtml((overview.uplink_ipv6 || {}).via || '-')} ${escapeHtml((overview.uplink_ipv6 || {}).src || '')}</div></div>
-        <div class="route"><div class="label">Detected Uplinks</div><div>${(overview.uplinks || []).map(i => `${escapeHtml(i.name)} (${escapeHtml(i.role)}, ${escapeHtml(i.state)})`).join('<br>') || 'No active uplink detected'}</div></div>
-        <div class="route"><div class="label">Local LAN Ports</div><div>${(overview.local_lans || []).map(i => `${escapeHtml(i.name)}: ${(i.ipv4 || []).join(', ') || 'no IPv4'} | ${(i.ipv6 || []).join(', ') || 'no IPv6'} | ${escapeHtml(i.state)}`).join('<br>') || '-'}</div></div>
+        <div class="route"><div class="label">Detected Uplinks</div><div class="line-list">${renderInterfaceSummary(overview.uplinks)}</div></div>
+        <div class="route"><div class="label">Local LAN Ports</div><div class="line-list">${renderLanSummary(overview.local_lans)}</div></div>
+        <div class="route"><div class="label">Service LAN Clients</div>${renderClientSummary(serviceLanClients)}</div>
         <div class="route"><div class="label">Dashboard Sessions</div><div>${(activeSessions || []).slice(0, 5).map(s => `${escapeHtml(s.entry || s.service)}: ${escapeHtml(s.peer_address)} -> ${escapeHtml(s.local_address)}:${escapeHtml(s.local_port)}`).join('<br>') || 'No active sessions detected'}</div></div>
       `;
     }
@@ -1578,6 +920,27 @@
         </div>
       `;
     }
+    function renderPortBoard(title, subtitle, status, ports = []) {
+      const portItems = Array.from({ length: 12 }, (_, index) => {
+        const active = index < Math.max(1, Math.min(ports.length || 4, 12));
+        return `<span class="visual-port ${active ? 'active' : ''}"></span>`;
+      }).join('');
+      return `
+        <div class="port-visual-card">
+          <div class="rail-card floating-service">
+            <div class="rail-card-head">
+              <span class="rail-icon">${escapeHtml(title.slice(0, 2).toUpperCase())}</span>
+              <div>
+                <div class="rail-title">${escapeHtml(title)}</div>
+                <div class="rail-subtitle">${escapeHtml(subtitle || '-')}</div>
+              </div>
+            </div>
+            <div class="rail-status"><span class="flow-dot"></span>${escapeHtml(status || 'Online')}</div>
+          </div>
+          <div class="port-board" aria-hidden="true">${portItems}</div>
+        </div>
+      `;
+    }
     function renderLanCard(kind, profile) {
       const prefix = kind === 'main' ? 'main-lan' : 'service-lan';
       const applyFn = kind === 'main' ? 'applyMainLanPreview()' : 'applyServiceLanPreview()';
@@ -1605,27 +968,29 @@
         : (profile.router_advertisements_active ? 'RA ON' : 'RA OFF');
       const liveAddressing = `${liveIpv4Summary} / ${liveIpv6Summary}`;
       const desiredAddressing = `${ipv4Summary} / ${ipv6Summary}`;
+      const iface = profile.target_interface || profile.interface || '-';
       return `
+        ${renderPortBoard(kind === 'main' ? 'Main LAN' : 'Service LAN', `${iface} / ${desiredAddressing}`, ((profile.target_interface_status || {}).state) || (profile.internet_enabled ? 'Online' : 'Standby'), [iface])}
         <div class="stat-grid">
-          <div class="metric"><div class="label">Assigned Port</div><div class="value small">${escapeHtml(profile.target_interface || profile.interface || '-')}</div></div>
+          <div class="metric"><div class="label">Assigned Port</div><div class="value small">${escapeHtml(iface)}</div></div>
           <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(((profile.target_interface_status || {}).state) || '-')}</div></div>
           <div class="metric"><div class="label">Internet</div><div class="switch-row" style="margin-top:8px;"><div class="muted">${internetPending ? 'Working...' : (profile.internet_enabled ? 'Enabled' : 'Disabled')}</div><label class="switch ${internetPending ? 'busy' : ''}"><input type="checkbox" ${profile.internet_enabled ? 'checked' : ''} ${internetPending ? 'disabled' : ''} onchange="toggleLanInternetState('${kind}', this.checked)"><span class="slider"></span></label></div></div>
           <div class="metric"><div class="label">Pi-hole</div><div class="value small">${profile.use_pihole_dns ? 'ON' : 'OFF'}</div></div>
         </div>
-        <div class="route">
-          <div class="label">Basic</div>
+        <details class="config-section">
+          <summary><span>Basic</span><span>${escapeHtml(role)} / ${escapeHtml(iface)}</span></summary>
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">Role</div><select id="${prefix}-role">${['isolated', 'internal', 'external'].map(v => `<option value="${v}" ${role === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
             <div class="metric"><div class="label">Desired State</div><div class="value small">${escapeHtml(desiredAddressing)}</div></div>
             <div class="metric"><div class="label">Live State</div><div class="value small">${escapeHtml(liveAddressing)}</div></div>
           </div>
-        </div>
-        <div class="route">
-          <div class="label">Role Behavior</div>
+        </details>
+        <details class="config-section">
+          <summary><span>Role Behavior</span><span>${escapeHtml(role)}</span></summary>
           <div class="item-list" style="margin-top:10px;">${lanRoleExplanation(role)}</div>
-        </div>
-        <div class="route">
-          <div class="label">Addressing</div>
+        </details>
+        <details class="config-section">
+          <summary><span>Addressing</span><span>${escapeHtml(desiredAddressing)}</span></summary>
           <div class="controls"><button class="secondary" onclick="setLanStackDisabled('${kind}')">Disable IPv4 + IPv6</button></div>
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">IPv4 Mode</div><select id="${prefix}-ipv4-mode">${(isServiceLan ? ['shared','disabled'] : ['shared','manual','disabled']).map(v => `<option value="${v}" ${ipv4Mode === v ? 'selected' : ''}>${ipv4ModeLabel(v)}</option>`).join('')}</select></div>
@@ -1636,9 +1001,9 @@
             ${ipv6Mode !== 'disabled' ? `<div class="metric"><div class="label">${kind === 'main' ? 'IPv6 Address' : 'IPv6 Gateway'}</div><input id="${prefix}-${kind === 'main' ? 'ipv6-address' : 'ipv6-gateway'}" value="${draftValue(`${kind}_lan.${kind === 'main' ? 'ipv6_address' : 'ipv6_gateway'}`, ipv6Address)}" /></div>` : ''}
             ${ipv6Mode !== 'disabled' ? `<div class="metric"><div class="label">IPv6 Prefix</div><input id="${prefix}-ipv6-prefix" value="${draftValue(`${kind}_lan.ipv6_prefix`, profile.ipv6_prefix || profile.prefix_ipv6 || '')}" /></div>` : ''}
           </div>
-        </div>
-        <div class="route">
-          <div class="label">DNS</div>
+        </details>
+        <details class="config-section">
+          <summary><span>DNS</span><span>${profile.use_pihole_dns ? 'Pi-hole ON' : 'Pi-hole OFF'}</span></summary>
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">DNS Servers</div><input id="${prefix}-dns-servers" value="${draftValue(`${kind}_lan.dns_servers`, (profile.dns_servers || []).join(', '))}" /></div>
             <div class="metric"><div class="label">Pi-hole Policy</div>
@@ -1651,7 +1016,7 @@
             <div class="metric"><div class="label">Live DHCP / RA</div><div class="value small">${escapeHtml(liveAddressing)}</div></div>
             <div class="metric"><div class="label">Current DNS Flow</div><div class="value small">${escapeHtml((profile.dns_servers || []).join(', ') || '-')}</div></div>
           </div>
-        </div>
+        </details>
         <div class="controls">
           <button onclick="${applyFn}">Apply Config</button>
           <button class="secondary" onclick="${restartFn}">Restart Connection</button>
@@ -1681,25 +1046,22 @@
       const wifiIpv4Method = draftValue('wifi.ipv4_method', wifi.config.ipv4_method || 'auto');
       const wifiIpv6Method = draftValue('wifi.ipv6_method', wifi.config.ipv6_method || 'disabled');
       const wifiClientTrustMode = draftValue('wifi.client_trust_mode', wifi.config.client_trust_mode || 'normal');
-      const wifiUplinkPreference = draftValue('wifi.uplink_preference', wifi.config.uplink_preference || 'prefer-lte');
       const wifiBand = draftValue('wifi.band', wifi.config.band || '2.4ghz');
       const wifiChannel = draftValue('wifi.channel', wifi.config.channel || 'auto');
       const hotspotSecurity = draftValue('wifi.hotspot_security', wifi.config.hotspot_security || 'wpa2-personal');
       const channelOptions = wifiChannelOptions(wifiBand);
-      const defaultDev = ((overview || {}).uplink_ipv4 || {}).dev || ((overview || {}).uplink_ipv6 || {}).dev || '';
-      const wifiIsDefaultUplink = defaultDev && defaultDev === wifi.interface;
       return `
+        ${renderPortBoard('Wireless', `${wifi.interface || 'radio'} / ${wifiMode === 'hotspot' ? 'Hotspot' : 'Client'}`, (wifi.device || {}).wifi_radio || (wifi.device || {}).state || 'Standby', [wifi.interface || 'wifi'])}
         <div class="stat-grid">
           <div class="metric"><div class="label">Interface</div><div class="value small">${escapeHtml(wifi.interface)}</div></div>
           <div class="metric"><div class="label">Active Mode</div><div class="value small">${escapeHtml((wifi.active || {}).mode || '-')}</div></div>
           <div class="metric"><div class="label">Security</div><div class="value small">${escapeHtml((wifi.active || {}).security || wifi.config.hotspot_security || '-')}</div></div>
           <div class="metric"><div class="label">Radio</div><div class="switch-row" style="margin-top:8px;"><div class="muted">${wifiPowerPending ? 'Working...' : escapeHtml((wifi.device || {}).wifi_radio || '-')}</div><label class="switch ${wifiPowerPending ? 'busy' : ''}"><input type="checkbox" ${wifiRadioOn ? 'checked' : ''} ${wifiPowerPending ? 'disabled' : ''} onchange="toggleWifiPower(this.checked)"><span class="slider"></span></label></div></div>
         </div>
-        <div class="route">
-          <div class="label">Live Wireless State</div>
+        <details class="config-section" open>
+          <summary><span>Live Wireless State</span><span>${escapeHtml((wifi.active || {}).mode || wifiMode)}</span></summary>
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">Connection</div><div class="value small">${escapeHtml((wifi.active || {}).connection || (wifi.device || {}).nm_connection || '-')}</div></div>
-            <div class="metric"><div class="label">Default Uplink</div><div class="value small">${wifiIsDefaultUplink ? 'Yes' : 'No'}</div></div>
             <div class="metric"><div class="label">SSID</div><div class="value small">${escapeHtml((wifi.active || {}).ssid || '-')}</div></div>
             <div class="metric"><div class="label">Country</div><div class="value small">${escapeHtml(wifi.country || '-')}</div></div>
             <div class="metric"><div class="label">Band</div><div class="value small">${escapeHtml((wifi.active || {}).band || wifiBandLabel(wifi.config.band || '2.4ghz'))}</div></div>
@@ -1707,15 +1069,13 @@
             <div class="metric"><div class="label">IPv4</div><div class="value small">${escapeHtml(((wifi.device || {}).ipv4 || []).join(', ') || '-')}</div></div>
             <div class="metric"><div class="label">IPv6</div><div class="value small">${escapeHtml(((wifi.device || {}).ipv6 || []).join(', ') || '-')}</div></div>
           </div>
-          ${wifiMode === 'client' ? `<div class="hint">${wifiIsDefaultUplink ? 'Wi-Fi client is currently the active default uplink.' : `Wi-Fi client is connected, but the active default uplink is ${escapeHtml(defaultDev || 'not set')}.`}</div>` : ''}
-        </div>
-        <div class="route">
-          <div class="label">Config</div>
+        </details>
+        <details class="config-section">
+          <summary><span>Config</span><span>${escapeHtml(wifiMode)} / ${escapeHtml(wifiBandLabel(wifiBand))}</span></summary>
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">Mode</div><select id="wifi-mode">${['client','hotspot'].map(v => `<option value="${v}" ${wifiMode === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
             <div class="metric"><div class="label">Country</div><select id="wifi-country">${['DE','TR','US','GB','NL','FR'].map(v => `<option value="${v}" ${draftValue('wifi.country', wifi.config.country || wifi.country || 'DE') === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
             <div class="metric"><div class="label">Client Trust</div><select id="wifi-client-trust-mode" ${wifiMode === 'client' ? '' : 'disabled'}>${[{id:'normal',label:'Normal'},{id:'isolated',label:'Isolated'}].map(v => `<option value="${v.id}" ${wifiClientTrustMode === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
-            <div class="metric"><div class="label">Uplink Preference</div><select id="wifi-uplink-preference" ${wifiMode === 'client' ? '' : 'disabled'} onchange="setUplinkPreference(this.value)">${[{id:'prefer-lte',label:'Prefer Cellular'},{id:'prefer-wifi',label:'Prefer Wi-Fi'},{id:'failover-only',label:'Wi-Fi Failover Only'}].map(v => `<option value="${v.id}" ${wifiUplinkPreference === v.id ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
             ${wifiMode === 'client' ? `<div class="metric"><div class="label">Client SSID</div><input id="wifi-ssid" value="${draftValue('wifi.ssid', wifi.config.ssid || '')}" /></div>` : ''}
             ${wifiMode === 'client' ? `<div class="metric"><div class="label">Client Password</div><input id="wifi-password" type="password" value="${draftValue('wifi.password', '')}" /></div>` : ''}
             ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Hotspot SSID</div><input id="wifi-hotspot-ssid" value="${draftValue('wifi.hotspot_ssid', wifi.config.hotspot_ssid || '')}" /></div>` : ''}
@@ -1731,11 +1091,20 @@
           </div>
           <div class="hint">${wifiMode === 'client' ? (wifiClientTrustMode === 'isolated' ? 'Isolated client mode blocks inbound access from the upstream Wi-Fi and stops that uplink from reaching local LAN segments. It helps on hotel and public Wi-Fi, but it is not a VPN and does not by itself eliminate upstream MITM risk.' : 'Normal client mode behaves like a regular Wi-Fi client.') : 'Client Trust only applies in client mode. Switch Mode to client if you want to tune upstream Wi-Fi behavior.'}</div>
           <div class="controls"><button onclick="applyWifiPreview()">Apply Config</button><button class="secondary" onclick="rescanWifi()">Rescan</button></div>
-        </div>
-        <div class="route"><div class="label">Connected Wi-Fi Clients</div><div class="item-list" style="margin-top:10px;">${(wifiClients || []).length ? wifiClients.map(c => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(c.hostname || c.mac || 'Client')}</div><div class="badge">${escapeHtml(c.interface || '-')}</div></div><div class="muted">Primary IP: ${escapeHtml(c.ip)} | MAC: ${escapeHtml(c.mac || '-')} | ${escapeHtml(c.state || '-')}</div>${c.secondary_ips ? `<div class="muted">Extra IPs: ${escapeHtml(c.secondary_ips)}</div>` : ''}</div>`).join('') : '<div class="muted">No Wi-Fi clients detected</div>'}</div></div>
-        <div class="route"><div class="label">Visible Wi-Fi Networks</div><div class="item-list" style="margin-top:10px;">${(wifi.scan || []).length ? wifi.scan.map(n => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(n.ssid)}</div><div class="badge">${escapeHtml(String(n.signal))}%</div></div><div class="muted">Channel ${escapeHtml(n.channel || '-')} | ${escapeHtml(n.security || 'open')} ${n.in_use ? '| connected' : ''}</div></div>`).join('') : '<div class="muted">No scan results</div>'}</div></div>
-        <div class="route"><div class="label">Wi-Fi Capabilities</div><div>${(wifi.capabilities || {}).band_2ghz === 'yes' ? '2.4 GHz ' : ''}${(wifi.capabilities || {}).band_5ghz === 'yes' ? '| 5 GHz ' : ''}${(wifi.capabilities || {}).ap === 'yes' ? '| AP mode ' : ''}${(wifi.capabilities || {}).wpa2 === 'yes' ? '| WPA2' : ''}</div></div>
-        <div class="route"><div class="label">RFKill</div><div>${(wifi.rfkill || []).length ? wifi.rfkill.map(r => `${escapeHtml(r.name || r.type)}: soft=${escapeHtml(r.soft)} hard=${escapeHtml(r.hard)}`).join('<br>') : 'No rfkill entries'}</div></div>
+        </details>
+        <details class="config-section">
+          <summary><span>Connected Wi-Fi Clients</span><span>${(wifiClients || []).length}</span></summary>
+          <div class="item-list" style="margin-top:10px;">${(wifiClients || []).length ? wifiClients.map(c => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(c.hostname || c.mac || 'Client')}</div><div class="badge">${escapeHtml(c.interface || '-')}</div></div><div class="muted">Primary IP: ${escapeHtml(c.ip)} | MAC: ${escapeHtml(c.mac || '-')} | ${escapeHtml(c.state || '-')}</div>${c.secondary_ips ? `<div class="muted">Extra IPs: ${escapeHtml(c.secondary_ips)}</div>` : ''}</div>`).join('') : '<div class="muted">No Wi-Fi clients detected</div>'}</div>
+        </details>
+        <details class="config-section">
+          <summary><span>Visible Wi-Fi Networks</span><span>${(wifi.scan || []).length}</span></summary>
+          <div class="item-list" style="margin-top:10px;">${(wifi.scan || []).length ? wifi.scan.map(n => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(n.ssid)}</div><div class="badge">${escapeHtml(String(n.signal))}%</div></div><div class="muted">Channel ${escapeHtml(n.channel || '-')} | ${escapeHtml(n.security || 'open')} ${n.in_use ? '| connected' : ''}</div></div>`).join('') : '<div class="muted">No scan results</div>'}</div>
+        </details>
+        <details class="config-section">
+          <summary><span>Radio Details</span><span>${escapeHtml((wifi.device || {}).wifi_radio || '-')}</span></summary>
+          <div class="route"><div class="label">Wi-Fi Capabilities</div><div>${(wifi.capabilities || {}).band_2ghz === 'yes' ? '2.4 GHz ' : ''}${(wifi.capabilities || {}).band_5ghz === 'yes' ? '| 5 GHz ' : ''}${(wifi.capabilities || {}).ap === 'yes' ? '| AP mode ' : ''}${(wifi.capabilities || {}).wpa2 === 'yes' ? '| WPA2' : ''}</div></div>
+          <div class="route"><div class="label">RFKill</div><div>${(wifi.rfkill || []).length ? wifi.rfkill.map(r => `${escapeHtml(r.name || r.type)}: soft=${escapeHtml(r.soft)} hard=${escapeHtml(r.hard)}`).join('<br>') : 'No rfkill entries'}</div></div>
+        </details>
         <div class="hint">${(wifi.notes || []).join(' ')}</div>
       `;
     }
@@ -1851,34 +1220,90 @@
         </div>
       `;
     }
+    function serviceTone(service) {
+      if (service.active) return 'online';
+      if ((service.ports || []).length) return 'standby';
+      return 'offline';
+    }
+    function renderServicePortfolioCard(service, url, id) {
+      const ports = service.ports || [];
+      const tone = serviceTone(service);
+      const primaryPort = ports[0] || 'local';
+      const source = service.source || service.type || 'system';
+      return `
+        <div class="portfolio-card ${tone}" onclick="openServiceOverlay('${id}')">
+          <div class="portfolio-top">
+            <div class="portfolio-icon">${escapeHtml(service.name.slice(0, 2).toUpperCase())}</div>
+            <div>
+              <div class="portfolio-title">${escapeHtml(service.name)}</div>
+              <div class="portfolio-url">${escapeHtml(url || primaryPort)}</div>
+            </div>
+          </div>
+          <div class="portfolio-status"><span class="flow-dot"></span>${service.active ? 'Online' : 'Detected'}</div>
+          <div class="port-strip">
+            <span>${escapeHtml(primaryPort)}</span>
+            <span>${escapeHtml(source)}</span>
+            <span>${service.active ? 'Active' : 'Passive'}</span>
+            <span>${ports.length ? `${ports.length} port` : 'No port'}</span>
+          </div>
+        </div>
+      `;
+    }
     function renderServices(services) {
       const named = [];
       const unnamed = [];
       services.forEach(service => {
         if (['Pi-hole', 'NetAlertX', 'smbd'].includes(service.name)) return;
         const url = getServiceUrl(service);
-        const markup = serviceCardMarkup(
-          `svc-${service.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
-          service.name,
-          service.active ? 'Active' : 'Detected',
-          `${(service.ports || []).join(', ') || '-'}`,
-          {
+        const id = `svc-${service.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+        appState.serviceDetails[id] = {
+          title: service.name,
+          subtitle: 'Detected service',
+          details: {
             'Ports': (service.ports || []).join(', ') || '-',
             'Bind addresses': (service.binds || []).join(', ') || '-',
             'Source': service.source || 'system',
             'Type': service.type || 'listener',
           },
-          [service.source || 'system', service.type || 'listener'],
           url,
-          'Detected service',
-          'Tap to inspect details and open the service if a web URL is known.'
-        );
+          notes: 'Tap to inspect details and open the service if a web URL is known.',
+        };
+        const markup = renderServicePortfolioCard(service, url, id);
         if ((service.name || '').startsWith('Port ')) unnamed.push(markup);
         else named.push(markup);
       });
       return `
-        <div class="route"><div class="label">Named Services</div><div class="service-list" style="margin-top:10px;">${named.join('') || '<div class="muted">No named services detected</div>'}</div></div>
-        <div class="route"><div class="label">Unnamed Ports</div><div class="service-list" style="margin-top:10px;">${unnamed.join('') || '<div class="muted">No port-only listeners detected</div>'}</div></div>
+        <div class="portfolio-grid">${named.join('') || '<div class="muted">No named services detected</div>'}</div>
+        <div class="route"><div class="label">Unnamed Ports</div><div class="portfolio-grid small" style="margin-top:10px;">${unnamed.join('') || '<div class="muted">No port-only listeners detected</div>'}</div></div>
+      `;
+    }
+    function renderLogsPanel(overview, services, activeSessions, systemStats) {
+      const rows = [];
+      const now = new Date();
+      const push = (mins, service, level, message) => {
+        const at = new Date(now.getTime() - mins * 60000);
+        rows.push({ at, service, level, message });
+      };
+      push(1, 'panel', 'info', `Dashboard sync completed for ${overview.hostname || 'device'}`);
+      (services || []).slice(0, 8).forEach((service, index) => {
+        push(index + 2, service.name, service.active ? 'info' : 'warn', `${service.name} ${service.active ? 'listener active' : 'detected without active state'} on ${(service.ports || []).join(', ') || 'no exposed port'}`);
+      });
+      (activeSessions || []).slice(0, 8).forEach((session, index) => {
+        push(index + 6, session.entry || session.service || 'session', 'info', `${session.peer_address || '-'} connected to ${session.local_address || '-'}:${session.local_port || '-'}`);
+      });
+      const docker = systemStats.docker || {};
+      push(12, 'docker', docker.available ? 'info' : 'error', docker.available ? `${docker.running || 0} containers running` : 'Docker is not available');
+      rows.sort((a, b) => b.at - a.at);
+      return `
+        <div class="log-toolbar">
+          <span class="chip">10 minutes</span>
+          <span class="chip">${rows.length} entries</span>
+          <button class="secondary" onclick="render()">Refresh</button>
+        </div>
+        <div class="log-table">
+          <div class="log-row log-head"><span>Date</span><span>Service</span><span>Level</span><span>Message</span></div>
+          ${rows.map(row => `<div class="log-row ${row.level}"><span>${escapeHtml(row.at.toLocaleTimeString())}</span><span>${escapeHtml(row.service)}</span><span>${escapeHtml(row.level)}</span><span>${escapeHtml(row.message)}</span></div>`).join('')}
+        </div>
       `;
     }
     function renderSamba(samba) {
@@ -1968,7 +1393,7 @@
       `;
     }
     async function render() {
-      const [
+      let [
         overview, systemStats, lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples,
         services, pihole, piholeNetworks, netalert, samba, printing, interfaces,
         serviceLan, serviceLanClients, wifiClients, lanProfile, activeSessions, wifi, filesystem, deviceIo
@@ -1997,13 +1422,24 @@
         loadJSON('/api/filesystem'),
         loadJSON('/api/device-io'),
       ]);
+      if (DEMO_MODE) {
+        ({
+          overview, systemStats, lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples,
+          services, pihole, piholeNetworks, netalert, samba, printing, interfaces,
+          serviceLan, serviceLanClients, wifiClients, lanProfile, activeSessions, wifi, filesystem, deviceIo,
+        } = demoMaskData({
+          overview, systemStats, lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples,
+          services, pihole, piholeNetworks, netalert, samba, printing, interfaces,
+          serviceLan, serviceLanClients, wifiClients, lanProfile, activeSessions, wifi, filesystem, deviceIo,
+        }));
+      }
 
       appState.lastSyncAt = Date.now();
       appState.serviceDetails = {};
       appState.wifi = wifi;
       updateRefreshState();
 
-      document.getElementById('overview').innerHTML = renderOverview(overview, systemStats, activeSessions);
+      document.getElementById('overview').innerHTML = renderOverview(overview, systemStats, activeSessions, serviceLanClients);
       document.getElementById('docker-brief').innerHTML = renderDockerBrief(systemStats);
       document.getElementById('dashboard-sessions').innerHTML = renderSessions(activeSessions);
       const sessionBadge = document.getElementById('dashboard-session-count');
@@ -2033,6 +1469,7 @@
       document.getElementById('pihole-panel').innerHTML = renderPiHolePanel(pihole, piholeNetworks);
       document.getElementById('netalert-panel').innerHTML = renderNetAlertPanel(netalert);
       document.getElementById('topology-panel').innerHTML = renderTopologyBlueprint(overview, lanProfile, serviceLan, wifi, netalert);
+      document.getElementById('logs-panel').innerHTML = renderLogsPanel(overview, services, activeSessions, systemStats);
       document.getElementById('services').innerHTML = renderServices(services);
 
       document.getElementById('samba-panel').innerHTML = renderSamba(samba);
@@ -2089,6 +1526,7 @@
 
       setView(appState.activeView);
       updateRefreshState();
+      applyDemoMaskToDom();
     }
     async function pollRender() {
       if (document.body.dataset.auth !== 'unlocked') {
@@ -2106,15 +1544,116 @@
     }
     async function boot() {
       loadTheme();
+      document.body.dataset.demo = DEMO_MODE ? 'on' : 'off';
+      bindNavMenus();
       setView(appState.activeView);
       if (await checkAuth()) {
         await render();
       }
+      applyDemoMaskToDom();
     }
     boot();
     setInterval(pollRender, AUTO_REFRESH_MS);
     window.addEventListener('focusin', updateRefreshState);
     window.addEventListener('focusout', () => setTimeout(updateRefreshState, 0));
-  </script>
-</body>
-</html>
+
+Object.assign(window, {
+  draftValue,
+  bindDraft,
+  clearDraft,
+  isTogglePending,
+  setTogglePending,
+  escapeHtml,
+  setAuthState,
+  checkAuth,
+  login,
+  logout,
+  updateCredentials,
+  loadJSON,
+  fetchJSON,
+  postAction,
+  hasActiveEditing,
+  updateRefreshState,
+  setView,
+  loadTheme,
+  toggleTheme,
+  getUptimeMode,
+  cycleUptimeMode,
+  fmtUptime,
+  openServiceOverlay,
+  closeServiceOverlay,
+  openRawProfile,
+  openTextOverlay,
+  closeTextOverlay,
+  dismissOverlay,
+  closeCommandOverlay,
+  openCommandOverlay,
+  refreshCommandPreview,
+  serviceCardMarkup,
+  getServiceUrl,
+  piholeToggleMarkup,
+  togglePiholeNetwork,
+  restartSystem,
+  powerOffSystem,
+  saveMainLanConfigPreview,
+  applyMainLanPreview,
+  saveServiceLanConfigPreview,
+  applyServiceLanPreview,
+  saveWifiConfigPreview,
+  applyWifiPreview,
+  applyCellularApnPreview,
+  setUplinkPreference,
+  toggleAutoApn,
+  setLinkState,
+  toggleLinkState,
+  restartLan,
+  toggleLanInternet,
+  toggleLanInternetState,
+  rescanWifi,
+  setWifiPower,
+  toggleWifiPower,
+  setLedState,
+  controlSamba,
+  setSambaPassword,
+  setSambaUserState,
+  deleteSambaUser,
+  saveSambaShare,
+  deleteSambaShare,
+  controlPrinting,
+  installNetAlertX,
+  syncNetAlertX,
+  runAtCommand,
+  collectMainLanPayload,
+  collectServiceLanPayload,
+  collectWifiPayload,
+  collectApnPayload,
+  renderOverview,
+  renderDockerBrief,
+  renderSessions,
+  sessionCount,
+  sessionCountClass,
+  ipv4ModeLabel,
+  ipv6ModeLabel,
+  wifiBandLabel,
+  wifiHotspotIpv6Label,
+  wifiChannelOptions,
+  setLanStackDisabled,
+  lanRoleExplanation,
+  renderLanCard,
+  categorizeInterfaces,
+  renderInterfaceGroup,
+  renderWireless,
+  renderCellular,
+  renderPiHolePanel,
+  renderNetAlertPanel,
+  renderTopologyBlueprint,
+  renderServices,
+  renderSamba,
+  renderSambaUsers,
+  renderPrinting,
+  renderFileSystem,
+  renderDeviceIo,
+  render,
+  pollRender,
+  boot,
+});
