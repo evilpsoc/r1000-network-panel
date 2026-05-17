@@ -1,0 +1,29 @@
+services:
+  backend:
+    image: localplane-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: localplane-backend
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    security_opt:
+      - apparmor:unconfined
+    cap_add:
+      - NET_ADMIN
+    environment:
+      PANEL_USERNAME: ${PANEL_USERNAME:-admin}
+      PANEL_PASSWORD: ${PANEL_PASSWORD:?Set PANEL_PASSWORD in .env before starting the panel}
+    volumes:
+      - /:/host:ro
+      - ./backend/data:/app/data
+      - /etc/hostname:/host/etc/hostname:ro
+      - /etc/samba:/host/etc/samba
+      - /var/lib/samba:/host/var/lib/samba
+      - /etc/NetworkManager/dnsmasq-shared.d:/etc/NetworkManager/dnsmasq-shared.d
+      - /sys/class/leds:/host-sys/class/leds
+      - /sys/devices/platform/leds:/host-sys/devices/platform/leds
+      - /proc/uptime:/host/proc/uptime:ro
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
+      - /var/lib/misc:/host/var/lib/misc:ro
