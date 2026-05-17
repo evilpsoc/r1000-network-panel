@@ -2082,6 +2082,7 @@ import './styles.css';
       const behaviorOptionItems = behaviorOptions.map(option => ({ value: option, label: interfaceBehaviorLabel(option, behaviorLabels) }));
       const link = config.link || {};
       const routing = config.routing || {};
+      const hasDedicatedSettingsSurface = ['management_lan', 'device_lan'].includes(configBehaviorKey(configItem, behaviorItem));
       const threeStateOptions = [
         { value: 'preserve_existing', label: 'Preserve existing' },
         { value: 'yes', label: 'Yes' },
@@ -2120,7 +2121,7 @@ import './styles.css';
           </div>
           <div class="hint">This is desired state only. Saving here does not restart interfaces or apply routing/firewall changes.</div>
         </details>
-        <details class="config-section">
+        ${hasDedicatedSettingsSurface ? '' : `<details class="config-section">
           <summary><span>Advanced Settings</span><span>link / routing</span></summary>
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">MTU</div><input id="${mtuId}" value="${escapeHtml(link.mtu || '')}" placeholder="${escapeHtml(live.mtu || 'preserve existing')}" /></div>
@@ -2130,7 +2131,7 @@ import './styles.css';
             <div class="metric"><div class="label">Ignore Auto Routes</div>${customSelectMarkup(ignoreRoutesId, `interface_config.${domId}.ignore_auto_routes`, threeStateOptions, routing.ignore_auto_routes || 'preserve_existing')}</div>
           </div>
           <div class="hint">These values are saved as desired state only. They feed readiness and plan preview; they do not change live NetworkManager profiles yet.</div>
-        </details>
+        </details>`}
         ${behaviorItem ? `<details class="config-section" open><summary><span>Behavior</span><span>${escapeHtml(interfaceBehaviorLabel(currentBehavior))}</span></summary><div class="stat-grid" style="margin-top:10px;"><div class="metric"><div class="label">Behavior</div>${customSelectMarkup(behaviorId, `interface_behavior.${configItem.interface}`, behaviorOptionItems, currentBehavior)}</div><div class="metric"><div class="label">Source</div><div class="value small">${escapeHtml((behaviorItem.configured_behavior || behaviorItem.configured_profile) ? 'configured' : 'live discovery')}</div></div></div><div class="controls"><button type="button" onclick="saveInterfaceBehavior('${escapeHtml(configItem.interface || '')}', '${behaviorId}')">Save Behavior</button></div><div class="hint">Behavior selects which settings surface belongs to this discovered interface.</div></details>` : ''}
         ${interfaceConfigSettingsSurface(configItem, behaviorItem, lanProfile, serviceLan)}
         <div class="controls">
