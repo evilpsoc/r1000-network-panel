@@ -23,7 +23,57 @@ KIND_LABELS = {
     "other": "Other",
 }
 
-CONFIGURABLE_KINDS = {"ethernet", "wifi", "cellular", "overlay"}
+CONFIGURABLE_KINDS = {"ethernet", "wifi", "cellular"}
+
+
+def _interface_capabilities(interface: str, kind: str, identity: dict[str, Any]) -> dict[str, Any]:
+    kind = _string(kind, "other")
+    interface = _string(interface)
+    owner = "kernel"
+    controls: list[str] = ["observe"]
+    warnings: list[str] = []
+    planned: list[str] = []
+
+    if kind == "ethernet":
+        owner = "networkmanager"
+        controls.extend(["display_name", "addressing", "dns", "traffic", "link_routing", "client_egress"])
+    elif kind == "wifi":
+        owner = "networkmanager"
+        controls.extend(["display_name", "wireless", "dns", "traffic", "link_routing"])
+        planned.append("wifi_secret_apply")
+    elif kind == "cellular":
+        owner = "modemmanager"
+        controls.extend(["display_name", "cellular", "traffic", "link_routing"])
+        planned.append("carrier_profile_apply")
+    elif kind == "overlay":
+        owner = "tunnel_provider"
+        controls.extend(["remote_access_observe"])
+        planned.append("tunnel_policy")
+        warnings.append("Tunnel interfaces are observe-only in the generic interface config surface.")
+    elif kind == "container":
+        owner = "docker"
+        controls.extend(["container_network_observe"])
+        warnings.append("Container and bridge interfaces should be managed through the container provider.")
+    elif kind == "loopback":
+        owner = "kernel"
+        warnings.append("Loopback is system-owned and cannot be configured from LocalPlane.")
+    else:
+        owner = "unknown"
+        planned.append("provider_detection")
+        warnings.append("LocalPlane does not know a safe provider for this interface yet.")
+
+    if identity.get("hotplug_candidate"):
+        controls.append("hotplug_identity")
+
+    configurable = bool({"addressing", "wireless", "cellular", "traffic", "link_routing"} & set(controls))
+    return {
+        "owner": owner,
+        "controls": sorted(set(controls)),
+        "configurable": configurable,
+        "observe_only": not configurable,
+        "warnings": warnings,
+        "planned": planned,
+    }
 
 
 def _string(value: Any, fallback: str = "") -> str:
@@ -56,6 +106,66 @@ def _runtime_interface_configs() -> dict[str, dict[str, Any]]:
     if not isinstance(configs, dict):
         return {}
     return {str(key): _dict(value) for key, value in configs.items()}
+
+
+def _discovered_interface_ids() -> set[str]:
+    inventory = interface_inventory()
+    ids: set[str] = set()
+    for item in inventory.get("interfaces", []):
+        if not isinstance(item, dict):
+            continue
+        identity = _dict(item.get("identity"))
+        stable_key = _string(identity.get("stable_key"), _string(item.get("interface")))
+        if stable_key:
+            ids.add(stable_key)
+    return ids
+
+
+def stale_interface_configs() -> dict[str, Any]:
+    stored = _runtime_interface_configs()
+    discovered = _discovered_interface_ids()
+    stale = []
+    for config_id, config in stored.items():
+        if config_id not in discovered:
+            meta = _dict(config.get("_meta"))
+            stale.append({
+                "id": config_id,
+                "display_name": _string(config.get("display_name"), config_id),
+                "last_kernel_name": _string(meta.get("last_kernel_name")),
+                "kind": _string(meta.get("kind")),
+                "updated_at": meta.get("updated_at"),
+            })
+    return {
+        "ok": True,
+        "count": len(stale),
+        "stale": stale,
+        "message": "Stale desired configs are saved LocalPlane records for interfaces that are not currently discovered.",
+    }
+
+
+def prune_stale_interface_configs() -> dict[str, Any]:
+    data = runtime_config()
+    stored = data.get("interface_configs", {})
+    if not isinstance(stored, dict):
+        stored = {}
+    discovered = _discovered_interface_ids()
+    removed = []
+    kept: dict[str, Any] = {}
+    for config_id, config in stored.items():
+        if str(config_id) in discovered:
+            kept[str(config_id)] = config
+        else:
+            removed.append({"id": str(config_id), "display_name": _string(_dict(config).get("display_name"), str(config_id))})
+    data["interface_configs"] = kept
+    write_runtime_config(data)
+    return {
+        "ok": True,
+        "removed": removed,
+        "removed_count": len(removed),
+        "remaining_count": len(kept),
+        "applied_to_host": False,
+        "message": "Removed stale LocalPlane desired configs only. No host interfaces, routes, firewall rules or services were changed.",
+    }
 
 
 def _legacy_config_for_interface(interface: str, kind: str) -> dict[str, Any]:
@@ -282,6 +392,7 @@ def interface_inventory() -> dict[str, Any]:
         name = _string(item.get("name"))
         kind = _string(item.get("role"), "other")
         identity = interface_identity(item, nmcli_map.get(name, {}))
+        capabilities = _interface_capabilities(name, kind, identity)
         interfaces.append({
             "interface": name,
             "kind": kind,
@@ -296,7 +407,8 @@ def interface_inventory() -> dict[str, Any]:
             "counters": item.get("counters", {}),
             "identity": identity,
             "nmcli": nmcli_map.get(name, {}),
-            "configurable": kind in CONFIGURABLE_KINDS,
+            "capabilities": capabilities,
+            "configurable": bool(capabilities.get("configurable")),
             "hotplug_candidate": bool(identity.get("hotplug_candidate")),
         })
     return {
@@ -339,6 +451,7 @@ def interface_configs() -> dict[str, Any]:
             "kind_label": item.get("kind_label"),
             "identity": identity,
             "live": item,
+            "capabilities": item.get("capabilities", {}),
             "config": effective,
             "source": "stored" if saved else (legacy.get("source") or "observed"),
             "editable": bool(item.get("configurable")),
@@ -348,6 +461,15 @@ def interface_configs() -> dict[str, Any]:
         "configs": configs,
         "model": {
             "version": CONFIG_VERSION,
+            "stored_configs": [
+                {
+                    "id": key,
+                    "display_name": _string(value.get("display_name"), key),
+                    "last_kernel_name": _string(_dict(value.get("_meta")).get("last_kernel_name")),
+                    "kind": _string(_dict(value.get("_meta")).get("kind")),
+                }
+                for key, value in stored.items()
+            ],
             "terms": {
                 "interface": "discovered hardware/software network device",
                 "config": "user-named desired behavior for that interface",
@@ -459,6 +581,8 @@ def rules_from_config(config_item: dict[str, Any]) -> list[dict[str, Any]]:
     link = _dict(config.get("link"))
     routing = _dict(config.get("routing"))
     firewall = _dict(config.get("firewall"))
+    wireless = _dict(config.get("wireless"))
+    cellular = _dict(config.get("cellular"))
     rules: list[dict[str, Any]] = []
 
     if _string(link.get("mtu")):
@@ -531,6 +655,24 @@ def rules_from_config(config_item: dict[str, Any]) -> list[dict[str, Any]]:
             "interface": interface,
             "mode": _string(firewall.get("isolation")),
             "exposed_services": _list(firewall.get("exposed_services")),
+        })
+    if kind == "wifi" and any(_string(wireless.get(key)) for key in ("mode", "ssid", "country", "band", "channel", "security")):
+        rules.append({
+            "type": "wireless.profile",
+            "interface": interface,
+            "mode": _string(wireless.get("mode"), "preserve_existing"),
+            "ssid": _string(wireless.get("ssid")),
+            "country": _string(wireless.get("country")),
+            "band": _string(wireless.get("band")),
+            "channel": _string(wireless.get("channel")),
+            "security": _string(wireless.get("security")),
+        })
+    if kind == "cellular" and ("auto_apn" in cellular or _string(cellular.get("apn"))):
+        rules.append({
+            "type": "cellular.apn",
+            "interface": interface,
+            "auto_apn": _bool(cellular.get("auto_apn"), True),
+            "apn": _string(cellular.get("apn")),
         })
     return rules
 
@@ -661,6 +803,9 @@ def readiness_for_config(config_item: dict[str, Any]) -> dict[str, Any]:
 
     if kind == "wifi":
         mode = _string(wireless.get("mode"), "client")
+        country = _string(wireless.get("country"))
+        channel = _string(wireless.get("channel"))
+        security = _string(wireless.get("security"))
         if not nmcli_ok:
             findings.append(_finding(
                 "blocker",
@@ -678,6 +823,12 @@ def readiness_for_config(config_item: dict[str, Any]) -> dict[str, Any]:
             ))
         if mode not in {"client", "hotspot", "disabled", "preserve_existing", ""}:
             findings.append(_finding("blocker", "wifi_mode_unknown", "Unknown Wi-Fi mode", f"{mode} is not a supported Wi-Fi mode."))
+        if country and not (len(country) == 2 and country.isalpha()):
+            findings.append(_finding("warning", "wifi_country_invalid", "Wi-Fi country looks invalid", f"{country} should be a two-letter regulatory domain such as DE or US."))
+        if channel and channel.lower() != "auto" and not channel.isdigit():
+            findings.append(_finding("warning", "wifi_channel_invalid", "Wi-Fi channel is not numeric", f"{channel} must be a channel number or auto."))
+        if security and security not in {"preserve_existing", "open", "wpa2-personal", "wpa3-personal"}:
+            findings.append(_finding("blocker", "wifi_security_unknown", "Unknown Wi-Fi security mode", f"{security} is not supported yet."))
 
     if kind == "cellular":
         if not mmcli_ok:

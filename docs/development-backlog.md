@@ -1,17 +1,5 @@
 # Development Backlog
 
-This backlog captures product and code ideas worth taking from mature
-self-hosted control panels without copying their code.
-
-## Documentation / Product Surface
-
-- Keep README as the project landing page.
-- Keep detailed docs in `docs/`.
-- Add screenshot gallery grouped by workflow.
-- Add per-page docs for Dashboard, Network, Wireless, Cellular, Runtime, Logs
-  and Services.
-- Generate an API reference later from FastAPI OpenAPI.
-
 ## Setup Wizard
 
 Build a first-run wizard:

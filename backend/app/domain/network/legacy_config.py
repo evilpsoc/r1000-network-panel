@@ -9,6 +9,71 @@ def cfg_flag(value: object) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def nm_bool(value: object, default: str = "yes") -> str:
+    normalized = str(value or default).strip().lower()
+    if normalized in {"1", "true", "yes", "on", "enabled"}:
+        return "yes"
+    if normalized in {"0", "false", "no", "off", "disabled"}:
+        return "no"
+    return default
+
+
+def nm_optional_int(value: object, min_value: int, max_value: int) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        number = int(text)
+    except ValueError:
+        return ""
+    if number < min_value or number > max_value:
+        return ""
+    return str(number)
+
+
+def nm_route_policy_settings(config: dict[str, object], default_never: str = "yes") -> list[str]:
+    never_default = nm_bool(config.get("never_default", default_never), default_never)
+    ignore_auto_routes = nm_bool(config.get("ignore_auto_routes", "yes"), "yes")
+    return [
+        "ipv4.never-default", never_default,
+        "ipv4.ignore-auto-routes", ignore_auto_routes,
+        "ipv6.never-default", never_default,
+        "ipv6.ignore-auto-routes", ignore_auto_routes,
+    ]
+
+
+def nm_link_route_settings(config: dict[str, object]) -> list[str]:
+    settings: list[str] = []
+    mtu = nm_optional_int(config.get("mtu", ""), 68, 9000)
+    route_metric = nm_optional_int(config.get("route_metric", ""), 1, 9999)
+    if mtu:
+        settings.extend(["802-3-ethernet.mtu", mtu])
+    if route_metric:
+        settings.extend(["ipv4.route-metric", route_metric, "ipv6.route-metric", route_metric])
+    return settings
+
+
+def nm_ethernet_profile_settings(
+    config: dict[str, object],
+    interface: str,
+    ipv4_method: str,
+    ipv6_method: str,
+    ipv4_address: str = "",
+    ipv6_address: str = "",
+) -> list[str]:
+    settings = [
+        "connection.autoconnect", nm_bool(config.get("autoconnect", "yes"), "yes"),
+        "connection.interface-name", interface,
+        "ipv4.method", ipv4_method,
+        "ipv4.addresses", ipv4_address,
+        "ipv6.method", ipv6_method,
+        "ipv6.addresses", ipv6_address,
+    ]
+    settings.extend(nm_route_policy_settings(config))
+    settings.extend(nm_link_route_settings(config))
+    return settings
+
+
 def same_physical_lan_interface(main_interface: str, service_interface: str) -> bool:
     return bool(main_interface and service_interface and main_interface == service_interface)
 

@@ -14,6 +14,7 @@ from app.api.routers import settings as settings_router
 from app.api.routers import sessions as sessions_router
 from app.api.routers import storage as storage_router
 from app.api.routers import system as system_router
+from app.api.routers import wifi as wifi_router
 from app.core.auth import require_panel_auth
 from app.core.cache import cached_read
 from app.core.backups import create_backup
@@ -51,6 +52,7 @@ from app.domain.lte.apn import (
 from app.domain.network.legacy_config import (
     cfg_flag,
     humanize_wifi_security,
+    nm_ethernet_profile_settings,
     normalize_country_code,
     normalize_lan_role,
     normalize_wifi_band,
@@ -105,6 +107,7 @@ app.include_router(settings_router.router)
 app.include_router(sessions_router.router)
 app.include_router(storage_router.router)
 app.include_router(system_router.router)
+app.include_router(wifi_router.router)
 event_log = EventLog()
 SERVICE_LAN_DNSMASQ_IPV6_CONF = "/etc/NetworkManager/dnsmasq-shared.d/99-service-lan-ipv6.conf"
 PIHOLE_DNSMASQ_FORWARD_CONF = "/etc/NetworkManager/dnsmasq-shared.d/98-pihole-upstream.conf"
@@ -318,28 +321,6 @@ def service_lan_cfg(key: str) -> str:
 
 def wifi_cfg(key: str) -> str:
     return str(WIFI_CONFIG.get(key, ""))
-
-
-def nm_bool(value: str, default: str = "yes") -> str:
-    normalized = str(value or default).strip().lower()
-    if normalized in {"1", "true", "yes", "on", "enabled"}:
-        return "yes"
-    if normalized in {"0", "false", "no", "off", "disabled"}:
-        return "no"
-    return default
-
-
-def nm_optional_int(value: str, min_value: int, max_value: int) -> str:
-    text = str(value or "").strip()
-    if not text:
-        return ""
-    try:
-        number = int(text)
-    except ValueError:
-        return ""
-    if number < min_value or number > max_value:
-        return ""
-    return str(number)
 
 
 def normalize_wifi_config() -> None:
@@ -2507,24 +2488,14 @@ def configure_main_lan() -> tuple[int, str, str]:
     else:
         cmd = base_cmd + ["type", "ethernet", "ifname", interface, "con-name", connection_name]
 
-    settings = [
-        "connection.autoconnect", nm_bool(lan_cfg("autoconnect"), "yes"),
-        "connection.interface-name", interface,
-        "ipv4.method", lan_cfg("ipv4_mode"),
-        "ipv4.addresses", lan_cfg("ipv4_address"),
-        "ipv4.never-default", nm_bool(lan_cfg("never_default"), "yes"),
-        "ipv4.ignore-auto-routes", nm_bool(lan_cfg("ignore_auto_routes"), "yes"),
-        "ipv6.method", "manual" if lan_cfg("ipv6_mode") != "disabled" else "disabled",
-        "ipv6.addresses", lan_cfg("ipv6_address") if lan_cfg("ipv6_mode") != "disabled" else "",
-        "ipv6.never-default", nm_bool(lan_cfg("never_default"), "yes"),
-        "ipv6.ignore-auto-routes", nm_bool(lan_cfg("ignore_auto_routes"), "yes"),
-    ]
-    mtu = nm_optional_int(lan_cfg("mtu"), 68, 9000)
-    route_metric = nm_optional_int(lan_cfg("route_metric"), 1, 9999)
-    if mtu:
-        settings.extend(["802-3-ethernet.mtu", mtu])
-    if route_metric:
-        settings.extend(["ipv4.route-metric", route_metric, "ipv6.route-metric", route_metric])
+    settings = nm_ethernet_profile_settings(
+        MAIN_LAN_CONFIG,
+        interface,
+        lan_cfg("ipv4_mode"),
+        "manual" if lan_cfg("ipv6_mode") != "disabled" else "disabled",
+        lan_cfg("ipv4_address"),
+        lan_cfg("ipv6_address") if lan_cfg("ipv6_mode") != "disabled" else "",
+    )
     if lan_cfg("ipv4_mode") != "shared":
         settings.extend(["ipv4.dns", dns_servers, "ipv4.dns-search", dns_search])
     code, stdout, stderr = run_command_full(cmd + settings)
@@ -2571,32 +2542,14 @@ def build_main_lan_preview(payload: dict | None = None) -> list[str]:
                     "connection",
                     "modify",
                     "main-lan",
-                    "connection.autoconnect",
-                    nm_bool(config.get("autoconnect", "yes"), "yes"),
-                    "connection.interface-name",
-                    interface,
-                    "ipv4.method",
-                    config.get("ipv4_mode", ""),
-                    "ipv4.addresses",
-                    config.get("ipv4_address", ""),
-                    "ipv4.never-default",
-                    nm_bool(config.get("never_default", "yes"), "yes"),
-                    "ipv4.ignore-auto-routes",
-                    nm_bool(config.get("ignore_auto_routes", "yes"), "yes"),
-                    "ipv6.method",
-                    "manual" if config.get("ipv6_mode") != "disabled" else "disabled",
-                    "ipv6.addresses",
-                    config.get("ipv6_address", "") if config.get("ipv6_mode") != "disabled" else "",
-                    "ipv6.never-default",
-                    nm_bool(config.get("never_default", "yes"), "yes"),
-                    "ipv6.ignore-auto-routes",
-                    nm_bool(config.get("ignore_auto_routes", "yes"), "yes"),
                 ]
-                + (["802-3-ethernet.mtu", nm_optional_int(config.get("mtu", ""), 68, 9000)] if nm_optional_int(config.get("mtu", ""), 68, 9000) else [])
-                + (
-                    ["ipv4.route-metric", nm_optional_int(config.get("route_metric", ""), 1, 9999), "ipv6.route-metric", nm_optional_int(config.get("route_metric", ""), 1, 9999)]
-                    if nm_optional_int(config.get("route_metric", ""), 1, 9999)
-                    else []
+                + nm_ethernet_profile_settings(
+                    config,
+                    interface,
+                    str(config.get("ipv4_mode", "")),
+                    "manual" if config.get("ipv6_mode") != "disabled" else "disabled",
+                    str(config.get("ipv4_address", "")),
+                    str(config.get("ipv6_address", "")) if config.get("ipv6_mode") != "disabled" else "",
                 )
             )
         ),
@@ -2627,23 +2580,17 @@ def build_service_lan_preview(payload: dict | None = None) -> list[str]:
     interface = config.get("interface") or get_service_lan_interface()
     ipv4_enabled = config.get("enable_ipv4") == "true" or config.get("ipv4_mode") == "shared"
     ipv6_enabled = config.get("enable_ipv6") == "true" or config.get("ipv6_mode") == "routed"
-    mtu = nm_optional_int(config.get("mtu", ""), 68, 9000)
-    route_metric = nm_optional_int(config.get("route_metric", ""), 1, 9999)
     nm_settings = [
         "connection", "modify", "service-lan",
-        "connection.autoconnect", nm_bool(config.get("autoconnect", "yes"), "yes"),
-        "connection.interface-name", interface,
-        "ipv4.method", "shared" if ipv4_enabled else "disabled",
-        "ipv4.never-default", nm_bool(config.get("never_default", "yes"), "yes"),
-        "ipv4.ignore-auto-routes", nm_bool(config.get("ignore_auto_routes", "yes"), "yes"),
-        "ipv6.method", "manual" if ipv6_enabled else "disabled",
-        "ipv6.never-default", nm_bool(config.get("never_default", "yes"), "yes"),
-        "ipv6.ignore-auto-routes", nm_bool(config.get("ignore_auto_routes", "yes"), "yes"),
     ]
-    if mtu:
-        nm_settings.extend(["802-3-ethernet.mtu", mtu])
-    if route_metric:
-        nm_settings.extend(["ipv4.route-metric", route_metric, "ipv6.route-metric", route_metric])
+    nm_settings.extend(
+        nm_ethernet_profile_settings(
+            config,
+            interface,
+            "shared" if ipv4_enabled else "disabled",
+            "manual" if ipv6_enabled else "disabled",
+        )
+    )
     return [
         shell_preview(nmcli_command(nm_settings)),
         f"{' '.join(f'{key}={shlex.quote(value)}' for key, value in env.items())} /usr/local/bin/service-lan-inet-off.sh",
@@ -3066,24 +3013,14 @@ def sync_service_lan_connection() -> tuple[int, str, str]:
 
     ipv4_enabled = service_lan_cfg("enable_ipv4") == "true"
     ipv6_enabled = service_lan_cfg("enable_ipv6") == "true"
-    settings = [
-        "connection.autoconnect", nm_bool(service_lan_cfg("autoconnect"), "yes"),
-        "connection.interface-name", interface,
-        "ipv4.method", "shared" if ipv4_enabled else "disabled",
-        "ipv4.addresses", service_lan_ipv4_address() if ipv4_enabled else "",
-        "ipv4.never-default", nm_bool(service_lan_cfg("never_default"), "yes"),
-        "ipv4.ignore-auto-routes", nm_bool(service_lan_cfg("ignore_auto_routes"), "yes"),
-        "ipv6.method", "manual" if ipv6_enabled else "disabled",
-        "ipv6.addresses", service_lan_ipv6_address() if ipv6_enabled else "",
-        "ipv6.never-default", nm_bool(service_lan_cfg("never_default"), "yes"),
-        "ipv6.ignore-auto-routes", nm_bool(service_lan_cfg("ignore_auto_routes"), "yes"),
-    ]
-    mtu = nm_optional_int(service_lan_cfg("mtu"), 68, 9000)
-    route_metric = nm_optional_int(service_lan_cfg("route_metric"), 1, 9999)
-    if mtu:
-        settings.extend(["802-3-ethernet.mtu", mtu])
-    if route_metric:
-        settings.extend(["ipv4.route-metric", route_metric, "ipv6.route-metric", route_metric])
+    settings = nm_ethernet_profile_settings(
+        SERVICE_LAN_CONFIG,
+        interface,
+        "shared" if ipv4_enabled else "disabled",
+        "manual" if ipv6_enabled else "disabled",
+        service_lan_ipv4_address() if ipv4_enabled else "",
+        service_lan_ipv6_address() if ipv6_enabled else "",
+    )
     code, stdout, stderr = run_command_full(cmd + settings)
     if code != 0:
         return code, stdout, stderr

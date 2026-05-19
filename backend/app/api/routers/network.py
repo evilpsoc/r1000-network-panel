@@ -6,10 +6,13 @@ from app.domain.network.interface_configs import (
     interface_configs,
     interface_inventory,
     interface_rules_preview,
+    prune_stale_interface_configs,
     reset_interface_config,
     save_interface_config,
+    stale_interface_configs,
 )
 from app.domain.network.interface_planner import interface_plan_preview
+from app.domain.network.objects import network_objects
 from app.domain.network.policy import preview_route_firewall_reconcile, route_firewall_policy
 from app.domain.network.profiles import (
     behavior_bindings,
@@ -67,9 +70,24 @@ def inventory():
     return interface_inventory()
 
 
+@router.get("/objects")
+def objects():
+    return network_objects()
+
+
 @router.get("/interface-configs")
 def configs():
     return interface_configs()
+
+
+@router.get("/interface-configs/stale")
+def configs_stale():
+    return stale_interface_configs()
+
+
+@router.delete("/interface-configs/stale")
+def configs_stale_delete():
+    return prune_stale_interface_configs()
 
 
 @router.post("/interface-configs/preview")

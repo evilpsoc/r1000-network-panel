@@ -765,6 +765,113 @@
       border-radius: 10px;
       background: rgba(6, 5, 11, 0.54);
     }
+    .provider-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 10px;
+      background: rgba(6, 5, 11, 0.58);
+    }
+    .provider-summary-title {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 2px;
+    }
+    .provider-summary-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+    .surface-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      margin: 0 0 12px;
+      padding: 3px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 10px;
+      background: rgba(5, 4, 10, 0.62);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+    }
+    .surface-tab {
+      min-width: 108px;
+      flex: 0 0 auto;
+      display: grid;
+      gap: 2px;
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      box-shadow: none;
+      text-align: left;
+    }
+    .surface-tab span {
+      color: inherit;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .surface-tab small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .surface-tab.active {
+      color: var(--text);
+      border-color: rgba(168, 85, 247, 0.45);
+      background: rgba(124, 58, 237, 0.26);
+    }
+    .provider-card {
+      background: rgba(8, 9, 12, 0.78);
+      border-color: rgba(148, 163, 184, 0.12);
+    }
+    .provider-card .surface-tabs {
+      width: max-content;
+      max-width: 100%;
+      gap: 2px;
+      margin: 0 auto 16px;
+      padding: 4px;
+      border: 0;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.075);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+    }
+    .provider-card .surface-tab {
+      min-width: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 18px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(226, 232, 240, 0.66);
+    }
+    .provider-card .surface-tab span {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .provider-card .surface-tab small {
+      display: none;
+    }
+    .provider-card .surface-tab:hover {
+      color: rgba(226, 232, 240, 0.92);
+      background: rgba(255, 255, 255, 0.045);
+    }
+    .provider-card .surface-tab.active {
+      color: #6ea2ff;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+    }
     .resource-switcher.empty {
       min-height: 70px;
       align-items: center;
@@ -863,6 +970,9 @@
     }
     .interface-facts .metric.wide {
       grid-column: span 2;
+    }
+    .interface-readiness-list {
+      margin: -2px 0 12px;
     }
     button {
       border: none;
@@ -980,6 +1090,11 @@
     }
     .metric.wide {
       grid-column: span 2;
+    }
+    .provider-card .metric:hover {
+      border-color: rgba(167, 139, 250, 0.22);
+      background: rgba(32, 25, 43, 0.86);
+      transform: translateY(-1px);
     }
     .label {
       font-size: 11px;
@@ -1539,6 +1654,36 @@
     }
     .portfolio-grid.small {
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .object-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .object-summary span {
+      border: 1px solid rgba(232, 226, 255, 0.12);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .object-group {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .object-group:first-of-type {
+      margin-top: 0;
+    }
+    .object-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 28px;
+      padding: 0 2px;
     }
     .portfolio-card {
       position: relative;
@@ -2354,6 +2499,13 @@
       }
     }
     @media (max-width: 860px) {
+      .provider-card .surface-tabs {
+        width: 100%;
+      }
+      .provider-card .surface-tab {
+        flex: 1 0 auto;
+        padding-inline: 12px;
+      }
       .login-panel {
         grid-template-columns: 1fr;
         min-height: auto;

@@ -139,8 +139,8 @@
 
       <section id="page-network" class="page">
         <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>Interface Configs</h3><p>Discovered interfaces. Open Configure for IP, DNS, routing and behavior controls.</p></div><span class="section-pill">Inventory</span></div><div id="interface-profiles">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>Local LAN Clients</h3></div></div><div id="service-lan-clients">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Network Objects</h3><p>Discovered devices grouped by provider and capability. Configure only where LocalPlane has a safe control surface.</p></div><span class="section-pill">Inventory</span></div><div id="interface-profiles">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Discovered Clients</h3></div></div><div id="service-lan-clients">Loading...</div></div>
         </div>
       </section>
 
@@ -170,15 +170,13 @@
 
       <section id="page-wireless" class="page">
         <div class="grid">
-          <div class="card span-2"><div class="card-header"><div><h3>Wireless</h3></div></div><div id="wifi-panel">Loading...</div></div>
+          <div class="card span-2 provider-card"><div class="card-header"><div><h3>Wireless</h3></div></div><div id="wifi-panel">Loading...</div></div>
         </div>
       </section>
 
       <section id="page-cellular" class="page">
         <div class="grid">
-          <div class="card"><div class="card-header"><div><h3>Cellular State</h3><p>Registration, signal and modem health.</p></div></div><div id="cellular-state">Loading...</div></div>
-          <div class="card"><div class="card-header"><div><h3>Cellular APN</h3><p>Preset profile editor, raw profile view and auto apply.</p></div></div><div id="cellular-apn">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>AT Command Line</h3><p>Direct modem commands with guardrails. Use carefully.</p></div></div><div id="cellular-at">Loading...</div></div>
+          <div class="card span-2 provider-card"><div class="card-header"><div><h3>Cellular</h3><p>Modem, SIM/operator, APN and guarded modem tools.</p></div></div><div id="cellular-panel">Loading...</div></div>
         </div>
       </section>
 
@@ -186,7 +184,7 @@
         <div class="grid operational">
           <div class="card"><div class="card-header"><div><h3>Pi-hole</h3><p>Per-network toggles, status and forwarding visibility.</p></div></div><div id="pihole-panel">Loading...</div></div>
           <div class="card"><div class="card-header"><div><h3>NetAlertX</h3><p>Network discovery, map view and install controls.</p></div></div><div id="netalert-panel">Loading...</div></div>
-          <div class="card span-2"><div class="card-header"><div><h3>Network State</h3><p>Compact status across uplink, LANs, Wi-Fi, sessions and discovery scope.</p></div></div><div id="topology-panel">Loading...</div></div>
+          <div class="card span-2"><div class="card-header"><div><h3>Network State</h3><p>Compact status across uplinks, interfaces, Wi-Fi, sessions and discovery scope.</p></div></div><div id="topology-panel">Loading...</div></div>
         </div>
       </section>
 

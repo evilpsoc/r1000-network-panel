@@ -32,25 +32,25 @@ PROFILE_OPTIONS_BY_ROLE = {
 KNOWN_PROFILES = set(PROFILE_SETTINGS)
 
 PROFILE_LABELS = {
-    "management_lan": "Management LAN",
-    "device_lan": "Device LAN",
+    "management_lan": "Local network",
+    "device_lan": "Client network",
     "uplink_ethernet": "Ethernet Uplink",
     "uplink_wifi": "Wi-Fi uplink",
     "hotspot_wifi": "Wi-Fi hotspot",
     "uplink_cellular": "Cellular Uplink",
-    "management_tunnel": "Management Tunnel",
+    "management_tunnel": "Remote access tunnel",
     "container": "container",
     "unassigned": "unassigned",
 }
 
 BEHAVIOR_LABELS = {
-    "management_lan": "Trusted local network",
-    "device_lan": "Isolated client network",
+    "management_lan": "Local network",
+    "device_lan": "Client network",
     "uplink_ethernet": "Wired uplink",
     "uplink_wifi": "Wi-Fi uplink",
     "hotspot_wifi": "Wi-Fi hotspot",
     "uplink_cellular": "Cellular uplink",
-    "management_tunnel": "Remote management tunnel",
+    "management_tunnel": "Remote access tunnel",
     "container": "Container interface",
     "unassigned": "Observe only",
 }
@@ -155,10 +155,6 @@ def suggested_profile(iface: dict[str, object], defaults: set[str], ethernet_ind
         return "uplink_wifi"
     if name in defaults and role == "cellular":
         return "uplink_cellular"
-    if role == "cellular":
-        return "uplink_cellular"
-    if role == "wifi":
-        return "uplink_wifi"
     if role == "overlay":
         return "management_tunnel"
     if role == "container":
@@ -166,12 +162,6 @@ def suggested_profile(iface: dict[str, object], defaults: set[str], ethernet_ind
     if role == "ethernet":
         if name in defaults:
             return "uplink_ethernet"
-        if iface.get("ipv4") or iface.get("ipv6"):
-            return "uplink_ethernet" if str(iface.get("state", "")).upper() == "UP" else "management_lan"
-        if ethernet_index == 0:
-            return "management_lan"
-        if ethernet_index == 1:
-            return "device_lan"
         return "unassigned"
     return "unassigned"
 

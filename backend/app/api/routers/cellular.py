@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Body
 
 from app.core.runtime_config import update_lte_config
+from app.domain.network.objects import network_objects_by_kind
 from app.domain.lte.apn import (
     LTE_AUTO_APN,
     LTE_SIM_OVERRIDES,
@@ -31,6 +32,12 @@ def save_cellular_runtime_config() -> None:
 @router.get("/api/lte")
 def status():
     return lte_status()
+
+
+@router.get("/api/cellular/modems")
+@router.get("/api/lte/modems")
+def modems():
+    return network_objects_by_kind("cellular")
 
 
 @router.get("/api/cellular/profile")

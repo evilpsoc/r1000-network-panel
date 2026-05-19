@@ -60,10 +60,18 @@ import './styles.css';
       'wifi.ipv4_method',
       'wifi.ipv6_method',
       'wifi.selected_interface',
+      'wifi.surface',
       'cellular.selected_interface',
+      'cellular.surface',
       'cellular.apn_country',
       'cellular.apn_provider',
       'cellular.apn_profile',
+    ]);
+    const NON_BLOCKING_DRAFT_KEYS = new Set([
+      'wifi.selected_interface',
+      'wifi.surface',
+      'cellular.selected_interface',
+      'cellular.surface',
     ]);
     const AUTO_REFRESH_MS = 5000;
     const TTL = {
@@ -102,6 +110,8 @@ import './styles.css';
       printing: {},
       interfaces: [],
       interfaceInventory: { interfaces: [], model: {} },
+      wifiRadios: { items: [], objects: [], model: {} },
+      cellularModems: { items: [], objects: [], model: {} },
       serviceLan: { notes: [], dns_servers: [], target_interface_status: {} },
       serviceLanClients: [],
       wifiClients: [],
@@ -109,7 +119,7 @@ import './styles.css';
       activeSessions: [],
       wifi: { config: {}, active: {}, device: {}, scan: [], rfkill: [], capabilities: {}, notes: [] },
       networkBehaviors: { interfaces: [], providers: [], wifi_driver_errors: [], model: {} },
-      interfaceConfigs: { configs: [], model: {} },
+      interfaceConfigs: { configs: [], objects: [], model: {} },
       filesystem: { disks: [], mounts: [], external: [] },
       deviceIo: { leds: [], serial_ports: [], gpio_chips: [], led_policy: {}, expected_rs485: [], notes: [] },
       providers: { providers: [], device_profile: {} },
@@ -125,8 +135,8 @@ import './styles.css';
     const ENDPOINTS = {
       overview: { url: '/api/overview', ttl: TTL.fast, timeout: 1800, views: ['dashboard', 'logs', 'monitoring', 'cellular'] },
       systemStats: { url: '/api/system/stats', ttl: TTL.fast, timeout: 1800, views: ['dashboard', 'logs'] },
-      interfaces: { url: '/api/interfaces', ttl: TTL.fast, views: ['interfaces', 'wireless', 'cellular'] },
-      interfaceInventory: { url: '/api/network/inventory', ttl: TTL.medium, views: ['network', 'interfaces', 'wireless', 'cellular'] },
+      interfaces: { url: '/api/interfaces', ttl: TTL.fast, views: ['interfaces'] },
+      interfaceInventory: { url: '/api/network/inventory', ttl: TTL.medium, views: [] },
       activeSessions: { url: '/api/active-sessions', ttl: TTL.slow, timeout: 1800, views: ['dashboard', 'logs'] },
       lte: { url: '/api/cellular', ttl: TTL.medium, views: ['cellular'] },
       lteProfile: { url: '/api/cellular/profile', ttl: TTL.static, views: ['cellular'] },
@@ -134,6 +144,7 @@ import './styles.css';
       lteSuggest: { url: '/api/cellular/apn/suggest', ttl: TTL.static, views: ['cellular'] },
       lteAuto: { url: '/api/cellular/apn/auto', ttl: TTL.static, views: ['cellular'] },
       atExamples: { url: '/api/cellular/at/examples', ttl: TTL.static, views: ['cellular'] },
+      cellularModems: { url: '/api/cellular/modems', ttl: TTL.medium, views: ['cellular'] },
       services: { url: '/api/services', ttl: TTL.slow, views: ['services', 'logs'] },
       serviceInventory: { url: '/api/services/inventory', ttl: TTL.slow, views: ['services'] },
       pihole: { url: '/api/pihole/status', ttl: TTL.medium, views: ['monitoring'] },
@@ -141,13 +152,14 @@ import './styles.css';
       netalert: { url: '/api/netalert/status', ttl: TTL.slow, views: ['monitoring'] },
       samba: { url: '/api/samba/status', ttl: TTL.slow, views: ['filesharing', 'users'] },
       printing: { url: '/api/printing/status', ttl: TTL.slow, views: ['filesharing'] },
-      serviceLan: { url: '/api/service-lan/status', ttl: TTL.medium, views: ['network', 'monitoring'] },
+      serviceLan: { url: '/api/service-lan/status', ttl: TTL.medium, views: ['monitoring'] },
       serviceLanClients: { url: '/api/local-lan/clients', ttl: TTL.medium, timeout: 1800, views: ['dashboard', 'network'] },
       wifiClients: { url: '/api/wifi/clients', ttl: TTL.medium, views: ['dashboard', 'wireless'] },
-      lanProfile: { url: '/api/main-lan/status', ttl: TTL.medium, views: ['network', 'monitoring'] },
+      lanProfile: { url: '/api/main-lan/status', ttl: TTL.medium, views: ['monitoring'] },
       wifi: { url: '/api/wifi/status', ttl: TTL.medium, views: ['wireless', 'monitoring', 'cellular'] },
-      networkBehaviors: { url: '/api/network/interface-behaviors', ttl: TTL.medium, views: ['network', 'diagnostics'] },
-      interfaceConfigs: { url: '/api/network/interface-configs', ttl: TTL.medium, views: ['network', 'interfaces'] },
+      wifiRadios: { url: '/api/wifi/radios', ttl: TTL.medium, views: ['wireless'] },
+      networkBehaviors: { url: '/api/network/interface-behaviors', ttl: TTL.medium, views: ['diagnostics'] },
+      interfaceConfigs: { url: '/api/network/objects', ttl: TTL.medium, views: ['network', 'wireless', 'cellular'] },
       filesystem: { url: '/api/filesystem', ttl: TTL.slow, views: ['filesystem'] },
       deviceIo: { url: '/api/device-io', ttl: TTL.slow, views: ['deviceio'] },
       providers: { url: '/api/providers', ttl: TTL.static, views: ['runtime'] },
@@ -219,6 +231,12 @@ import './styles.css';
       updateRefreshState();
     }
     function setInterfaceSelector(key, value) {
+      appState.drafts[key] = value || '';
+      sessionStorage.setItem(`portal.${key}`, value || '');
+      updateRefreshState();
+      scheduleDraftRender();
+    }
+    function setProviderSurface(key, value) {
       appState.drafts[key] = value || '';
       sessionStorage.setItem(`portal.${key}`, value || '');
       updateRefreshState();
@@ -600,9 +618,10 @@ import './styles.css';
         && !active.closest('.login-screen');
       const focusedEdit = activeIsVisible && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName);
       const scrollingSurface = document.querySelector('.scroll-list:hover, .scroll-grid:hover, .log-table:hover, .activity-panel:hover');
+      const hasBlockingDrafts = Object.keys(appState.drafts).some(key => !NON_BLOCKING_DRAFT_KEYS.has(key));
       return focusedEdit
         || Boolean(scrollingSurface)
-        || Object.keys(appState.drafts).length > 0
+        || hasBlockingDrafts
         || document.querySelector('.custom-select.open, .custom-options.portal-open')
         || document.getElementById('command-overlay').classList.contains('open')
         || document.getElementById('service-overlay').classList.contains('open')
@@ -938,11 +957,28 @@ import './styles.css';
         const sections = [];
         const plan = preview.plan || {};
         const commandLines = (plan.commands || preview.commands || []).map(item => typeof item === 'string' ? item : `${item.command}  # ${item.reason || item.risk || ''}`.trim());
+        const plannerSteps = plan.steps || preview.steps || [];
         const warnings = plan.warnings || preview.warnings || [];
         const verify = plan.verify || preview.verify || [];
         const rollback = plan.rollback || preview.rollback || [];
         if ((preview.errors || []).length) sections.push(`# errors\n${preview.errors.join('\n')}`);
         if (warnings.length) sections.push(`# warnings\n${warnings.join('\n')}`);
+        if (plannerSteps.length) {
+          sections.push(`# review plan\n${plannerSteps.map((step, index) => {
+            const header = `${index + 1}. [${step.risk || 'info'}] ${step.summary || step.action || 'planned step'}`;
+            const previewCommands = Array.isArray(step.command_preview)
+              ? step.command_preview
+              : (step.command_preview ? [step.command_preview] : []);
+            const previewLines = [
+              step.provider ? `provider: ${step.provider}` : '',
+              step.interface ? `interface: ${step.interface}` : '',
+              ...previewCommands,
+              ...(step.verify || []).map(item => `verify: ${item}`),
+              ...(step.rollback || []).map(item => `rollback: ${item}`),
+            ].filter(Boolean);
+            return [header, ...previewLines].join('\n');
+          }).join('\n\n')}`);
+        }
         if (commandLines.length) sections.push(`# commands\n${commandLines.join('\n')}`);
         if (verify.length) sections.push(`# verify\n${verify.join('\n')}`);
         if (rollback.length) sections.push(`# rollback\n${rollback.join('\n')}`);
@@ -1078,7 +1114,7 @@ import './styles.css';
     }
     async function saveMainLanConfigPreview() {
       const payload = collectMainLanPayload();
-      await openCommandOverlay('Save Trusted LAN Config', '/api/main-lan/preview', payload, async (edited) => {
+      await openCommandOverlay('Save Local Network Config', '/api/main-lan/preview', payload, async (edited) => {
         await fetchJSON('/api/main-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
         clearDraft('main_lan.');
         await render();
@@ -1086,7 +1122,7 @@ import './styles.css';
     }
     async function applyMainLanPreview() {
       const payload = collectMainLanPayload();
-      await openCommandOverlay('Apply Trusted LAN', '/api/main-lan/preview', payload, async (edited) => {
+      await openCommandOverlay('Apply Local Network', '/api/main-lan/preview', payload, async (edited) => {
         await fetchJSON('/api/main-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
         await fetchJSON('/api/main-lan/apply', { method: 'POST' });
         clearDraft('main_lan.');
@@ -1095,7 +1131,7 @@ import './styles.css';
     }
     async function saveServiceLanConfigPreview() {
       const payload = collectServiceLanPayload();
-      await openCommandOverlay('Save Client LAN Config', '/api/service-lan/preview', payload, async (edited) => {
+      await openCommandOverlay('Save Client Network Config', '/api/service-lan/preview', payload, async (edited) => {
         await fetchJSON('/api/service-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
         clearDraft('service_lan.');
         await render();
@@ -1103,7 +1139,7 @@ import './styles.css';
     }
     async function applyServiceLanPreview() {
       const payload = collectServiceLanPayload();
-      await openCommandOverlay('Apply Client LAN', '/api/service-lan/preview', payload, async (edited) => {
+      await openCommandOverlay('Apply Client Network', '/api/service-lan/preview', payload, async (edited) => {
         await fetchJSON('/api/service-lan/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(edited) });
         await fetchJSON('/api/service-lan/apply', { method: 'POST' });
         clearDraft('service_lan.');
@@ -1228,38 +1264,93 @@ import './styles.css';
         await render({ force: true });
       }
     }
-    async function saveInterfaceDesiredConfig(configId, inputId, mtuId, autoconnectId, routeMetricId, neverDefaultId, ignoreRoutesId) {
-      const displayName = document.getElementById(inputId)?.value || '';
-      const mtu = (document.getElementById(mtuId)?.value || '').trim();
-      const autoconnect = document.getElementById(autoconnectId)?.value || 'preserve_existing';
-      const routeMetric = (document.getElementById(routeMetricId)?.value || '').trim();
-      const neverDefault = document.getElementById(neverDefaultId)?.value || 'preserve_existing';
-      const ignoreAutoRoutes = document.getElementById(ignoreRoutesId)?.value || 'preserve_existing';
-      const ok = await postAction(
-        '/api/network/interface-configs/save',
-        `Failed to save interface config for ${configId}`,
-        {
-          id: configId,
-          config: {
-            display_name: displayName,
-            link: {
-              mtu,
-              autoconnect,
-            },
-            routing: {
-              route_metric: routeMetric,
-              never_default: neverDefault,
-              ignore_auto_routes: ignoreAutoRoutes,
-            },
-          },
-        }
-      );
-      if (ok) {
-        apiCache.delete('interfaceConfigs');
-        apiCache.delete('networkPlan');
-        closeFloatingWindow();
-        await render({ force: true });
+    function collectInterfaceDesiredConfig(ids) {
+      const field = (key, fallback = '') => (document.getElementById(ids[key])?.value || fallback).trim();
+      const select = (key, fallback = 'preserve_existing') => document.getElementById(ids[key])?.value || fallback;
+      const displayName = field('name');
+      const config = { display_name: displayName };
+      if (ids.ipv4Mode) {
+        config.addressing = {
+          ipv4_mode: select('ipv4Mode'),
+          ipv4_address: field('ipv4Address'),
+          ipv4_subnet: field('ipv4Subnet'),
+          dhcp_range: field('dhcpRange'),
+          ipv6_mode: select('ipv6Mode'),
+          ipv6_address: field('ipv6Address'),
+          ipv6_prefix: field('ipv6Prefix'),
+        };
       }
+      if (ids.dnsMode || ids.useAsUplink || ids.shareToClients) {
+        config.dns = ids.dnsMode ? {
+          mode: select('dnsMode'),
+          servers: field('dnsServers'),
+          search: field('dnsSearch'),
+        } : undefined;
+        config.internet = {
+          use_as_uplink: select('useAsUplink', 'no') === 'yes',
+          share_to_clients: select('shareToClients', 'no') === 'yes',
+          priority: field('priority'),
+        };
+        config.firewall = ids.isolation ? {
+          isolation: select('isolation'),
+        } : undefined;
+      }
+      if (ids.mtu || ids.routeMetric) {
+        config.link = {
+          mtu: field('mtu'),
+          autoconnect: select('autoconnect'),
+        };
+        config.routing = {
+          route_metric: field('routeMetric'),
+          never_default: select('neverDefault'),
+          ignore_auto_routes: select('ignoreAutoRoutes'),
+        };
+      }
+      if (ids.wifiMode) {
+        config.wireless = {
+          mode: select('wifiMode'),
+          ssid: field('wifiSsid'),
+          country: field('wifiCountry'),
+          band: select('wifiBand'),
+          channel: field('wifiChannel'),
+          security: select('wifiSecurity'),
+        };
+      }
+      if (ids.cellularAutoApn) {
+        config.cellular = {
+          apn: field('cellularApn'),
+          auto_apn: select('cellularAutoApn', 'yes') === 'yes',
+        };
+      }
+      Object.keys(config).forEach(key => config[key] === undefined && delete config[key]);
+      return config;
+    }
+    async function saveInterfaceDesiredConfig(previewItem, ids) {
+      const configId = previewItem?.id || previewItem?.interface;
+      if (!configId) {
+        alert('Unable to identify this interface config.');
+        return;
+      }
+      const desiredConfig = collectInterfaceDesiredConfig(ids);
+      const planItem = { ...(previewItem || {}), config: desiredConfig };
+      await openCommandOverlay(
+        'Save Interface Desired Config',
+        '/api/network/interface-plan/preview',
+        { configs: [planItem] },
+        async (edited) => {
+          const editedConfig = (((edited.configs || [])[0] || {}).config) || desiredConfig;
+          await fetchJSON('/api/network/interface-configs/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: configId, config: editedConfig }),
+          });
+          apiCache.delete('interfaceConfigs');
+          apiCache.delete('networkPlan');
+          closeFloatingWindow();
+          await render({ force: true });
+          },
+        'Review desired-state plan before saving. This does not apply host changes.'
+      );
     }
     async function resetInterfaceConfig(configId) {
       const ok = await postAction(
@@ -1271,6 +1362,16 @@ import './styles.css';
         apiCache.delete('interfaceConfigs');
         closeFloatingWindow();
         await render({ force: true });
+      }
+    }
+    async function pruneStaleInterfaceConfigs() {
+      if (!confirm('Remove saved LocalPlane configs for interfaces that are not currently discovered? This does not touch host networking.')) return;
+      try {
+        await trackActivity('Clear stale interface configs', 'Desired-state cleanup', () => fetchJSON('/api/network/interface-configs/stale', { method: 'DELETE' }));
+        apiCache.delete('interfaceConfigs');
+        await render({ force: true });
+      } catch (err) {
+        alert(err.message || 'Failed to prune stale interface configs');
       }
     }
     async function setLedState(name, payload) {
@@ -1485,7 +1586,7 @@ import './styles.css';
           </svg>
           ${renderFlowNode('internet', 'Internet', routeLabel, uplink.state || defaultDev, 'pos-internet', renderFlowMetric(uplink.name || defaultDev, uplink.counters))}
           ${renderFlowNode('core', hostLabel, clientLabel, 'online', 'pos-core')}
-          ${renderFlowNode('lan', 'Local LAN', `${lanLabel} / ${lanClients} wired client${lanClients === 1 ? '' : 's'}`, lan.state, 'pos-lan', renderFlowMetric(lan.name || lan.interface, lan.counters))}
+          ${renderFlowNode('lan', 'Local Ports', `${lanLabel} / ${lanClients} wired client${lanClients === 1 ? '' : 's'}`, lan.state, 'pos-lan', renderFlowMetric(lan.name || lan.interface, lan.counters))}
           ${renderFlowNode('wifi', 'Wi-Fi', `${wifi.name || wifi.interface || 'radio'} / ${wirelessClients} wireless client${wirelessClients === 1 ? '' : 's'}`, wifi.state, 'pos-wifi', renderFlowMetric(wifi.name || wifi.interface, wifi.counters))}
           ${renderFlowNode('services', 'Services', `${docker} container${docker === 1 ? '' : 's'}`, docker ? 'active' : 'standby', 'pos-services')}
         </div>
@@ -1539,8 +1640,8 @@ import './styles.css';
         <div class="route"><div class="label">IPv4 Default Route</div><div>${escapeHtml((overview.uplink_ipv4 || {}).dev || '-')} via ${escapeHtml((overview.uplink_ipv4 || {}).via || '-')} ${escapeHtml((overview.uplink_ipv4 || {}).src || '')}</div></div>
         <div class="route"><div class="label">IPv6 Default Route</div><div>${escapeHtml((overview.uplink_ipv6 || {}).dev || '-')} via ${escapeHtml((overview.uplink_ipv6 || {}).via || '-')} ${escapeHtml((overview.uplink_ipv6 || {}).src || '')}</div></div>
         <div class="route"><div class="label">Detected Uplinks</div><div class="line-list">${renderInterfaceSummary(overview.uplinks)}</div></div>
-        <div class="route"><div class="label">Local LAN Ports</div><div class="line-list">${renderLanSummary(overview.local_lans)}</div></div>
-        <div class="route"><div class="label">Local LAN Clients</div>${renderClientSummary(serviceLanClients, 'No wired LAN clients detected')}</div>
+        <div class="route"><div class="label">Local Ports</div><div class="line-list">${renderLanSummary(overview.local_lans)}</div></div>
+        <div class="route"><div class="label">Discovered Clients</div>${renderClientSummary(serviceLanClients, 'No wired clients detected')}</div>
         <div class="route"><div class="label">Wi-Fi Clients</div>${renderClientSummary(wifiClients, 'No Wi-Fi clients detected')}</div>
       `;
     }
@@ -1647,6 +1748,32 @@ import './styles.css';
     function interfaceAddresses(item) {
       return [...(item.ipv4 || item.ipv4_addresses || []), ...(item.ipv6 || item.ipv6_addresses || [])].filter(Boolean);
     }
+    function networkObjectInterfaces(payload = {}, kind = '') {
+      return (payload.objects || []).filter(item => !kind || item.kind === kind).map(item => {
+        const live = item.live || {};
+        const identity = item.identity || {};
+        return {
+          ...live,
+          id: item.id,
+          name: item.interface,
+          interface: item.interface,
+          role: item.kind,
+          kind: item.kind,
+          detected_kind: item.kind,
+          state: live.state || item.status || '',
+          ipv4: live.ipv4 || [],
+          ipv6: live.ipv6 || [],
+          default_route: Boolean(live.default_route),
+          mac: live.mac || identity.mac || '',
+          mtu: live.mtu,
+          driver: identity.driver || '',
+          path: identity.bus_path || identity.stable_key || '',
+          capabilities: item.capabilities || {},
+          readiness: item.readiness || {},
+          provider_model: item.provider_model || {},
+        };
+      });
+    }
     function selectedInterface(interfaces, selectedName) {
       return uniqueInterfaces(interfaces).find(item => interfaceNameOf(item) === selectedName) || uniqueInterfaces(interfaces)[0] || {};
     }
@@ -1656,14 +1783,60 @@ import './styles.css';
       const addresses = interfaceAddresses(item);
       const state = interfaceStateOf(item) || (interfaceIsUp(item) ? 'up' : 'unknown');
       const path = item.path || item.sys_path || item.driver || item.mac || item.address || '';
+      const capabilities = item.capabilities || {};
+      const readiness = item.readiness || {};
+      const providerModel = item.provider_model || {};
+      const findings = readiness.findings || [];
       return `
         <div class="interface-facts">
           <div class="metric"><div class="label">Selected</div><div class="value small">${escapeHtml(interfaceNameOf(item))}</div></div>
           <div class="metric"><div class="label">Kind</div><div class="value small">${escapeHtml(interfaceKindOf(item))}</div></div>
           <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(state.toUpperCase())}</div></div>
           <div class="metric"><div class="label">Route</div><div class="value small">${item.default_route ? 'Default route' : 'No default route'}</div></div>
+          ${(providerModel.provider || capabilities.owner) ? `<div class="metric"><div class="label">Provider</div><div class="value small">${escapeHtml(providerModel.provider || capabilities.owner)}</div></div>` : ''}
+          ${readiness.status ? `<div class="metric"><div class="label">Readiness</div><div class="value small">${escapeHtml(String(readiness.status).toUpperCase())}</div></div>` : ''}
           <div class="metric wide"><div class="label">Addresses</div><div class="value small">${escapeHtml(addresses.join(', ') || '-')}</div></div>
           ${path ? `<div class="metric wide"><div class="label">Identity</div><div class="value small">${escapeHtml(path)}</div></div>` : ''}
+        </div>
+        ${findings.length ? `<div class="item-list interface-readiness-list">${findings.slice(0, 3).map(finding => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(finding.title || finding.code || 'Finding')}</div><div class="badge ${finding.severity === 'blocker' ? 'offline' : finding.severity === 'warning' ? 'warn' : 'idle'}">${escapeHtml(finding.severity || 'info')}</div></div><div class="muted">${escapeHtml(finding.detail || '')}</div>${finding.suggestion ? `<div class="hint">${escapeHtml(finding.suggestion)}</div>` : ''}</div>`).join('')}</div>` : ''}`;
+    }
+    function renderProviderInventorySummary(title, interfaces, noun) {
+      const items = uniqueInterfaces(interfaces);
+      const ready = items.filter(item => interfaceIsUp(item)).length;
+      const warnings = items.filter(item => String((item.readiness || {}).status || '').toLowerCase() === 'warning').length;
+      const blocked = items.filter(item => String((item.readiness || {}).status || '').toLowerCase() === 'blocked').length;
+      const observeOnly = items.filter(item => (item.capabilities || {}).observe_only).length;
+      const surfaceLabels = (((items[0] || {}).provider_model || {}).surfaces || []).map(surface => surface.label).filter(Boolean);
+      return `
+        <div class="provider-summary">
+          <div>
+            <div class="provider-summary-title">${escapeHtml(title)}</div>
+            <div class="muted">${items.length} ${escapeHtml(noun || 'device')}${items.length === 1 ? '' : 's'} discovered from the host provider model.${surfaceLabels.length ? ` Surfaces: ${escapeHtml(surfaceLabels.join(', '))}.` : ''}</div>
+          </div>
+          <div class="provider-summary-badges">
+            <span class="badge online">${ready} up</span>
+            ${warnings ? `<span class="badge warn">${warnings} warning</span>` : ''}
+            ${blocked ? `<span class="badge offline">${blocked} blocked</span>` : ''}
+            ${observeOnly ? `<span class="badge idle">${observeOnly} observe-only</span>` : ''}
+          </div>
+        </div>
+      `;
+    }
+    function providerSurfacesFor(interfaces, selectedName, fallback = []) {
+      const item = selectedInterface(interfaces, selectedName);
+      const surfaces = (((item || {}).provider_model || {}).surfaces || []).filter(surface => surface && surface.id);
+      return surfaces.length ? surfaces : fallback;
+    }
+    function renderProviderSurfaceTabs(title, surfaces, activeId, draftKey) {
+      const items = (surfaces || []).filter(surface => surface && surface.id);
+      if (!items.length) return '';
+      const active = items.some(surface => surface.id === activeId) ? activeId : items[0].id;
+      return `
+        <div class="surface-tabs" role="tablist" aria-label="${escapeHtml(title)}">
+          ${items.map(surface => `<button type="button" class="surface-tab ${surface.id === active ? 'active' : ''} ${escapeHtml(surface.state || 'read_only')}" onclick='setProviderSurface(${JSON.stringify(draftKey)}, ${JSON.stringify(surface.id)})'>
+            <span>${escapeHtml(surface.label || surface.id)}</span>
+            <small>${escapeHtml(String(surface.state || 'read_only').replaceAll('_', ' '))}</small>
+          </button>`).join('')}
         </div>`;
     }
     function uniqueInterfaces(items) {
@@ -1680,7 +1853,8 @@ import './styles.css';
       if (!items.length) {
         return `<div class="resource-switcher empty"><div><div class="resource-switcher-title">${escapeHtml(title)}</div><div class="muted">${escapeHtml(emptyText || 'No matching interfaces discovered yet.')}</div></div></div>`;
       }
-      const activeName = selectedName || interfaceNameOf(items.find(interfaceIsUp) || items[0]);
+      const selectedExists = items.some(item => interfaceNameOf(item) === selectedName);
+      const activeName = selectedExists ? selectedName : interfaceNameOf(items.find(interfaceIsUp) || items[0]);
       return `
         <div class="resource-switcher">
           <div class="resource-switcher-head">
@@ -1836,7 +2010,7 @@ import './styles.css';
       return `
         <div class="item">
           <div class="item-title">Internal</div>
-          <div class="muted">Trusted local network. Clients can use local services, management pages, and other internal networks.</div>
+          <div class="muted">Local network. Clients can use local services and other internal networks when policy allows it.</div>
         </div>
       `;
     }
@@ -1845,13 +2019,14 @@ import './styles.css';
       const applyFn = kind === 'main' ? 'applyMainLanPreview()' : 'applyServiceLanPreview()';
       const restartFn = kind === 'main' ? `restartLan('/api/main-lan/restart')` : `restartLan('/api/service-lan/restart')`;
       const isServiceLan = kind === 'service';
+      const embedded = Boolean(options.embedded);
       const ipv4Address = kind === 'main' ? (profile.ipv4_address || '') : (profile.gateway_ipv4 || '');
       const ipv6Address = kind === 'main' ? (profile.ipv6_address || '') : (profile.gateway_ipv6 || '');
       const internetPending = isTogglePending(`internet:${kind}`);
       const ipv4Mode = draftValue(`${kind}_lan.ipv4_mode`, profile.ipv4_mode || 'shared');
       const ipv6Mode = draftValue(`${kind}_lan.ipv6_mode`, profile.ipv6_mode || 'disabled');
       const role = draftValue(`${kind}_lan.role`, profile.role || 'internal');
-      const displayName = draftValue(`${kind}_lan.name`, profile.name || (kind === 'main' ? 'Trusted LAN' : 'Client LAN'));
+      const displayName = draftValue(`${kind}_lan.name`, profile.name || (kind === 'main' ? 'Local Network' : 'Client Network'));
       const ipv4Summary = ipv4Mode === 'shared' ? 'DHCP ON' : ipv4Mode === 'manual' ? 'Static IPv4' : 'IPv4 Disabled';
       const ipv6Summary = ipv6Mode === 'routed' ? 'RA ON' : ipv6Mode === 'manual' ? 'Static IPv6' : 'IPv6 Disabled';
       const liveIpv4Summary = kind === 'main'
@@ -1880,8 +2055,8 @@ import './styles.css';
       return `
         <div class="stat-grid">
           <div class="metric"><div class="label">Display Name</div><input id="${prefix}-name" value="${escapeHtml(displayName)}" /></div>
-          <div class="metric"><div class="label">Interface</div>${interfaceControl}</div>
-          <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(((profile.target_interface_status || {}).state) || '-')}</div></div>
+          ${embedded ? `<input id="${prefix}-${kind === 'main' ? 'target-interface' : 'interface'}" type="hidden" value="${escapeHtml(portValue)}" />` : `<div class="metric"><div class="label">Interface</div>${interfaceControl}</div>`}
+          ${embedded ? '' : `<div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(((profile.target_interface_status || {}).state) || '-')}</div></div>`}
           <div class="metric"><div class="label">Internet</div><div class="switch-row" style="margin-top:8px;"><div class="muted">${internetPending ? 'Working...' : (profile.internet_enabled ? 'Enabled' : 'Disabled')}</div><label class="switch ${internetPending ? 'busy' : ''}"><input type="checkbox" ${profile.internet_enabled ? 'checked' : ''} ${internetPending ? 'disabled' : ''} onchange="toggleLanInternetState('${kind}', this.checked)"><span class="slider"></span></label></div></div>
           <div class="metric"><div class="label">Pi-hole</div><div class="value small">${profile.use_pihole_dns ? 'ON' : 'OFF'}</div></div>
         </div>
@@ -1966,13 +2141,13 @@ import './styles.css';
     }
     function interfaceBehaviorLabel(behavior, labels = {}) {
       const fallback = {
-        management_lan: 'Trusted local network',
-        device_lan: 'Isolated client network',
+        management_lan: 'Local network',
+        device_lan: 'Client network',
         uplink_ethernet: 'Wired uplink',
         uplink_wifi: 'Wi-Fi uplink',
         hotspot_wifi: 'Wi-Fi hotspot',
         uplink_cellular: 'Cellular uplink',
-        management_tunnel: 'Remote management tunnel',
+        management_tunnel: 'Remote access tunnel',
         container: 'Container interface',
         unassigned: 'Observe only',
       };
@@ -1989,8 +2164,19 @@ import './styles.css';
       return parts.join(' / ');
     }
     function configStatusTone(configItem) {
+      const status = String(configItem.status || '').toLowerCase();
+      if (status === 'blocked') return 'offline';
+      if (status === 'warning') return 'warn';
+      if (status === 'observe_only') return 'idle';
+      if (status === 'ready') return 'online';
+      if (status === 'down') return 'offline';
       const live = configItem.live || {};
       return stateTone(live.state || '');
+    }
+    function configStatusLabel(configItem) {
+      const status = String(configItem.status || '').replace('_', ' ');
+      if (status) return status;
+      return (configItem.live || {}).state || 'unknown';
     }
     function configDisplayName(configItem) {
       const config = configItem.config || {};
@@ -2045,10 +2231,10 @@ import './styles.css';
     function interfaceConfigSettingsSurface(configItem, behaviorItem = null, lanProfile = {}, serviceLan = {}) {
       const behaviorKey = configBehaviorKey(configItem, behaviorItem);
       if (behaviorKey === 'management_lan') {
-        return `<div class="route"><div class="label">Trusted LAN Settings</div><div style="margin-top:10px;">${renderLanCard('main', lanProfileForInterface('main', lanProfile, { ...configItem.live, interface: configItem.interface }), { fixedInterface: true })}</div></div>`;
+        return `<div class="route"><div class="label">Apply Path</div><div class="hint">This interface is configured from its own desired-state sections above. Legacy LAN apply endpoints stay available only as a compatibility bridge while reconcile becomes the primary path.</div></div>`;
       }
       if (behaviorKey === 'device_lan') {
-        return `<div class="route"><div class="label">Client LAN Settings</div><div style="margin-top:10px;">${renderLanCard('service', lanProfileForInterface('service', serviceLan, { ...configItem.live, interface: configItem.interface }), { fixedInterface: true })}</div></div>`;
+        return `<div class="route"><div class="label">Apply Path</div><div class="hint">Client egress, DHCP/RA, NAT and isolation are represented as desired state here. Use preview/reconcile before any host-changing apply.</div></div>`;
       }
       if (behaviorKey === 'uplink_wifi' || behaviorKey === 'hotspot_wifi') {
         return `<div class="route"><div class="label">Wireless Settings</div><div class="hint">SSID, password, scan and hotspot controls are on the Wireless page for now. This window keeps the selected radio identity and behavior intent together.</div></div>`;
@@ -2064,37 +2250,129 @@ import './styles.css';
       }
       return `<div class="route"><div class="label">Settings Surface</div><div class="hint">Choose a compatible behavior to reveal IP, DNS, routing or modem-specific controls here.</div></div>`;
     }
-    function interfaceConfigBody(configItem, behaviorItem = null, lanProfile = {}, serviceLan = {}) {
+    function interfaceConfigBody(configItem) {
       const config = configItem.config || {};
       const live = configItem.live || {};
       const identity = configItem.identity || {};
       const domId = String(configItem.id || configItem.interface || '').replace(/[^a-zA-Z0-9_-]/g, '-');
-      const inputId = `interface-config-name-${domId}`;
-      const mtuId = `interface-config-mtu-${domId}`;
-      const autoconnectId = `interface-config-autoconnect-${domId}`;
-      const routeMetricId = `interface-config-route-metric-${domId}`;
-      const neverDefaultId = `interface-config-never-default-${domId}`;
-      const ignoreRoutesId = `interface-config-ignore-routes-${domId}`;
-      const behaviorId = `interface-config-behavior-${String(configItem.interface || configItem.id || '').replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-      const behaviorLabels = {};
-      const behaviorOptions = behaviorItem ? (behaviorItem.behavior_options || behaviorItem.profile_options || ['unassigned']) : ['unassigned'];
-      const currentBehavior = behaviorItem ? (behaviorItem.effective_behavior || behaviorItem.effective_profile || 'unassigned') : 'unassigned';
-      const behaviorOptionItems = behaviorOptions.map(option => ({ value: option, label: interfaceBehaviorLabel(option, behaviorLabels) }));
+      const ids = {
+        name: `interface-config-name-${domId}`,
+        ipv4Mode: `interface-config-ipv4-mode-${domId}`,
+        ipv4Address: `interface-config-ipv4-address-${domId}`,
+        ipv4Subnet: `interface-config-ipv4-subnet-${domId}`,
+        dhcpRange: `interface-config-dhcp-range-${domId}`,
+        ipv6Mode: `interface-config-ipv6-mode-${domId}`,
+        ipv6Address: `interface-config-ipv6-address-${domId}`,
+        ipv6Prefix: `interface-config-ipv6-prefix-${domId}`,
+        dnsMode: `interface-config-dns-mode-${domId}`,
+        dnsServers: `interface-config-dns-servers-${domId}`,
+        dnsSearch: `interface-config-dns-search-${domId}`,
+        useAsUplink: `interface-config-use-uplink-${domId}`,
+        shareToClients: `interface-config-share-clients-${domId}`,
+        priority: `interface-config-priority-${domId}`,
+        mtu: `interface-config-mtu-${domId}`,
+        autoconnect: `interface-config-autoconnect-${domId}`,
+        routeMetric: `interface-config-route-metric-${domId}`,
+        neverDefault: `interface-config-never-default-${domId}`,
+        ignoreAutoRoutes: `interface-config-ignore-routes-${domId}`,
+        isolation: `interface-config-isolation-${domId}`,
+        wifiMode: `interface-config-wifi-mode-${domId}`,
+        wifiSsid: `interface-config-wifi-ssid-${domId}`,
+        wifiCountry: `interface-config-wifi-country-${domId}`,
+        wifiBand: `interface-config-wifi-band-${domId}`,
+        wifiChannel: `interface-config-wifi-channel-${domId}`,
+        wifiSecurity: `interface-config-wifi-security-${domId}`,
+        cellularApn: `interface-config-cellular-apn-${domId}`,
+        cellularAutoApn: `interface-config-cellular-auto-apn-${domId}`,
+      };
       const link = config.link || {};
       const routing = config.routing || {};
-      const hasDedicatedSettingsSurface = ['management_lan', 'device_lan'].includes(configBehaviorKey(configItem, behaviorItem));
+      const addressing = config.addressing || {};
+      const dns = config.dns || {};
+      const internet = config.internet || {};
+      const firewall = config.firewall || {};
+      const wireless = config.wireless || {};
+      const cellular = config.cellular || {};
+      const kind = String(configItem.kind || '').toLowerCase();
+      const capabilities = configItem.capabilities || {};
+      const controls = new Set(capabilities.controls || []);
+      const canEditDesired = capabilities.configurable === true && configItem.editable !== false;
+      const canAddress = canEditDesired && controls.has('addressing');
+      const canTraffic = canEditDesired && controls.has('traffic');
+      const canAdvanced = canEditDesired && controls.has('link_routing');
+      const canWifi = canEditDesired && controls.has('wireless');
+      const canCellular = canEditDesired && controls.has('cellular');
+      const observeOnlyReason = (capabilities.warnings || [])[0] || 'This interface is visible for inventory, but LocalPlane does not know a safe provider/control set for it yet.';
+      const hasDedicatedSettingsSurface = false;
       const threeStateOptions = [
         { value: 'preserve_existing', label: 'Preserve existing' },
         { value: 'yes', label: 'Yes' },
         { value: 'no', label: 'No' },
       ];
+      const ipv4Options = ['preserve_existing', 'auto', 'manual', 'shared', 'disabled'].map(value => ({ value, label: value.replace('_', ' ') }));
+      const ipv6Options = ['preserve_existing', 'auto', 'manual', 'routed', 'disabled'].map(value => ({ value, label: value.replace('_', ' ') }));
+      const dnsOptions = ['preserve_existing', 'auto', 'custom', 'pihole', 'disabled'].map(value => ({ value, label: value.replace('_', ' ') }));
+      const isolationOptions = ['preserve_existing', 'off', 'limited', 'on'].map(value => ({ value, label: value.replace('_', ' ') }));
+      const wifiModeOptions = ['preserve_existing', 'client', 'hotspot', 'disabled'].map(value => ({ value, label: value.replace('_', ' ') }));
+      const wifiBandOptions = ['preserve_existing', 'auto', '2.4ghz', '5ghz'].map(value => ({ value, label: value.replace('ghz', ' GHz').replace('_', ' ') }));
+      const wifiSecurityOptions = ['preserve_existing', 'open', 'wpa2-personal', 'wpa3-personal'].map(value => ({ value, label: value.replace('-', ' ') }));
+      const activeIds = { name: ids.name };
+      if (canAddress) Object.assign(activeIds, {
+        ipv4Mode: ids.ipv4Mode,
+        ipv4Address: ids.ipv4Address,
+        ipv4Subnet: ids.ipv4Subnet,
+        dhcpRange: ids.dhcpRange,
+        ipv6Mode: ids.ipv6Mode,
+        ipv6Address: ids.ipv6Address,
+        ipv6Prefix: ids.ipv6Prefix,
+      });
+      if (canTraffic) Object.assign(activeIds, {
+        dnsMode: ids.dnsMode,
+        dnsServers: ids.dnsServers,
+        dnsSearch: ids.dnsSearch,
+        useAsUplink: ids.useAsUplink,
+        shareToClients: ids.shareToClients,
+        priority: ids.priority,
+        isolation: ids.isolation,
+      });
+      if (canAdvanced) Object.assign(activeIds, {
+        mtu: ids.mtu,
+        autoconnect: ids.autoconnect,
+        routeMetric: ids.routeMetric,
+        neverDefault: ids.neverDefault,
+        ignoreAutoRoutes: ids.ignoreAutoRoutes,
+      });
+      if (canWifi) Object.assign(activeIds, {
+        wifiMode: ids.wifiMode,
+        wifiSsid: ids.wifiSsid,
+        wifiCountry: ids.wifiCountry,
+        wifiBand: ids.wifiBand,
+        wifiChannel: ids.wifiChannel,
+        wifiSecurity: ids.wifiSecurity,
+      });
+      if (canCellular) Object.assign(activeIds, {
+        cellularApn: ids.cellularApn,
+        cellularAutoApn: ids.cellularAutoApn,
+      });
+      const saveIds = escapeHtml(JSON.stringify(activeIds));
+      const previewItem = {
+        id: configItem.id,
+        interface: configItem.interface,
+        kind: configItem.kind,
+        kind_label: configItem.kind_label,
+        source: configItem.source,
+        live,
+        identity,
+      };
+      const previewItemJson = escapeHtml(JSON.stringify(previewItem));
       return `
         <div class="stat-grid">
-          <div class="metric"><div class="label">Display Name</div><input id="${inputId}" value="${escapeHtml(config.display_name || configItem.interface || '')}" /></div>
-          <div class="metric"><div class="label">Interface</div><div class="value small">${escapeHtml(configItem.interface || '-')}</div></div>
+          <div class="metric"><div class="label">Display Name</div><input id="${ids.name}" value="${escapeHtml(config.display_name || configItem.interface || '')}" /></div>
           <div class="metric"><div class="label">Kind</div><div class="value small">${escapeHtml(configItem.kind_label || configItem.kind || '-')}</div></div>
           <div class="metric"><div class="label">Source</div><div class="value small">${escapeHtml(configItem.source || '-')}</div></div>
           <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(live.state || '-')}</div></div>
+          <div class="metric"><div class="label">Owner</div><div class="value small">${escapeHtml(capabilities.owner || '-')}</div></div>
+          <div class="metric"><div class="label">Mode</div><div class="value small">${canEditDesired ? 'configurable' : 'observe only'}</div></div>
         </div>
         <details class="config-section">
           <summary><span>Live Identity</span><span>${escapeHtml(identity.stable_key || configItem.id || '-')}</span></summary>
@@ -2121,55 +2399,150 @@ import './styles.css';
           </div>
           <div class="hint">This is desired state only. Saving here does not restart interfaces or apply routing/firewall changes.</div>
         </details>
-        ${hasDedicatedSettingsSurface ? '' : `<details class="config-section">
+        ${canAddress ? `<details class="config-section">
+          <summary><span>Addressing</span><span>${escapeHtml([addressing.ipv4_mode || 'preserve IPv4', addressing.ipv6_mode || 'preserve IPv6'].join(' / '))}</span></summary>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">IPv4 Protocol</div>${customSelectMarkup(ids.ipv4Mode, `interface_config.${domId}.ipv4_mode`, ipv4Options, addressing.ipv4_mode || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">IPv4 Address</div><input id="${ids.ipv4Address}" value="${escapeHtml(addressing.ipv4_address || '')}" placeholder="10.0.0.1/24" /></div>
+            <div class="metric"><div class="label">IPv4 Subnet</div><input id="${ids.ipv4Subnet}" value="${escapeHtml(addressing.ipv4_subnet || '')}" placeholder="10.0.0.0/24" /></div>
+            <div class="metric"><div class="label">DHCP Range</div><input id="${ids.dhcpRange}" value="${escapeHtml(addressing.dhcp_range || '')}" placeholder="10.0.0.100-10.0.0.199" /></div>
+            <div class="metric"><div class="label">IPv6 Protocol</div>${customSelectMarkup(ids.ipv6Mode, `interface_config.${domId}.ipv6_mode`, ipv6Options, addressing.ipv6_mode || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">IPv6 Address</div><input id="${ids.ipv6Address}" value="${escapeHtml(addressing.ipv6_address || '')}" placeholder="fd42::1/64" /></div>
+            <div class="metric"><div class="label">IPv6 Prefix</div><input id="${ids.ipv6Prefix}" value="${escapeHtml(addressing.ipv6_prefix || '')}" placeholder="fd42::/64" /></div>
+          </div>
+          <div class="hint">Mode names follow the usual Linux/OpenWrt shape: auto/DHCP, manual/static, shared client network, routed IPv6, or disabled.</div>
+        </details>` : ''}
+        ${canTraffic ? `<details class="config-section">
+          <summary><span>DNS / Traffic</span><span>${escapeHtml(dns.mode || 'preserve existing')}</span></summary>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">DNS Mode</div>${customSelectMarkup(ids.dnsMode, `interface_config.${domId}.dns_mode`, dnsOptions, dns.mode || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">DNS Servers</div><input id="${ids.dnsServers}" value="${escapeHtml(dns.servers || '')}" placeholder="1.1.1.1, 8.8.8.8" /></div>
+            <div class="metric"><div class="label">DNS Search</div><input id="${ids.dnsSearch}" value="${escapeHtml(dns.search || '')}" placeholder="optional search domain" /></div>
+            <div class="metric"><div class="label">Use As Uplink</div>${customSelectMarkup(ids.useAsUplink, `interface_config.${domId}.use_as_uplink`, [{value:'yes',label:'Yes'},{value:'no',label:'No'}], internet.use_as_uplink ? 'yes' : 'no')}</div>
+            <div class="metric"><div class="label">Share To Clients</div>${customSelectMarkup(ids.shareToClients, `interface_config.${domId}.share_to_clients`, [{value:'yes',label:'Yes'},{value:'no',label:'No'}], internet.share_to_clients ? 'yes' : 'no')}</div>
+            <div class="metric"><div class="label">Priority</div><input id="${ids.priority}" value="${escapeHtml(internet.priority ?? '')}" placeholder="lower wins" /></div>
+            <div class="metric"><div class="label">Isolation</div>${customSelectMarkup(ids.isolation, `interface_config.${domId}.isolation`, isolationOptions, firewall.isolation || 'preserve_existing')}</div>
+          </div>
+          <div class="hint">These fields describe intent. Reconcile/preview turns them into routing, DNS, NAT and firewall operations.</div>
+        </details>` : ''}
+        ${canWifi ? `<details class="config-section">
+          <summary><span>Wi-Fi</span><span>${escapeHtml([wireless.mode || 'preserve', wireless.ssid || 'no ssid'].join(' / '))}</span></summary>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">Mode</div>${customSelectMarkup(ids.wifiMode, `interface_config.${domId}.wifi_mode`, wifiModeOptions, wireless.mode || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">SSID</div><input id="${ids.wifiSsid}" value="${escapeHtml(wireless.ssid || '')}" placeholder="network name" /></div>
+            <div class="metric"><div class="label">Country</div><input id="${ids.wifiCountry}" value="${escapeHtml(wireless.country || '')}" placeholder="DE" /></div>
+            <div class="metric"><div class="label">Band</div>${customSelectMarkup(ids.wifiBand, `interface_config.${domId}.wifi_band`, wifiBandOptions, wireless.band || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">Channel</div><input id="${ids.wifiChannel}" value="${escapeHtml(wireless.channel || '')}" placeholder="auto" /></div>
+            <div class="metric"><div class="label">Security</div>${customSelectMarkup(ids.wifiSecurity, `interface_config.${domId}.wifi_security`, wifiSecurityOptions, wireless.security || 'preserve_existing')}</div>
+          </div>
+          <div class="hint">Wi-Fi secrets stay in the dedicated Wireless apply flow for now. This desired state records radio/SSID/security intent only.</div>
+        </details>` : ''}
+        ${canCellular ? `<details class="config-section">
+          <summary><span>Cellular</span><span>${cellular.auto_apn === false ? 'manual APN' : 'auto APN'}</span></summary>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">Auto APN</div>${customSelectMarkup(ids.cellularAutoApn, `interface_config.${domId}.cellular_auto_apn`, [{value:'yes',label:'Yes'},{value:'no',label:'No'}], cellular.auto_apn === false ? 'no' : 'yes')}</div>
+            <div class="metric"><div class="label">APN</div><input id="${ids.cellularApn}" value="${escapeHtml(cellular.apn || '')}" placeholder="internet" /></div>
+          </div>
+          <div class="hint">Cellular apply should stay provider-aware: ModemManager, SIM state, carrier registration, IP method and signal must be checked before changing the live profile.</div>
+        </details>` : ''}
+        ${canAdvanced ? `<details class="config-section">
           <summary><span>Advanced Settings</span><span>link / routing</span></summary>
           <div class="stat-grid" style="margin-top:10px;">
-            <div class="metric"><div class="label">MTU</div><input id="${mtuId}" value="${escapeHtml(link.mtu || '')}" placeholder="${escapeHtml(live.mtu || 'preserve existing')}" /></div>
-            <div class="metric"><div class="label">Autoconnect</div>${customSelectMarkup(autoconnectId, `interface_config.${domId}.autoconnect`, threeStateOptions, link.autoconnect || 'preserve_existing')}</div>
-            <div class="metric"><div class="label">Route Metric</div><input id="${routeMetricId}" value="${escapeHtml(routing.route_metric || '')}" placeholder="preserve existing" /></div>
-            <div class="metric"><div class="label">Never Default</div>${customSelectMarkup(neverDefaultId, `interface_config.${domId}.never_default`, threeStateOptions, routing.never_default || 'preserve_existing')}</div>
-            <div class="metric"><div class="label">Ignore Auto Routes</div>${customSelectMarkup(ignoreRoutesId, `interface_config.${domId}.ignore_auto_routes`, threeStateOptions, routing.ignore_auto_routes || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">MTU</div><input id="${ids.mtu}" value="${escapeHtml(link.mtu || '')}" placeholder="${escapeHtml(live.mtu || 'preserve existing')}" /></div>
+            <div class="metric"><div class="label">Autoconnect</div>${customSelectMarkup(ids.autoconnect, `interface_config.${domId}.autoconnect`, threeStateOptions, link.autoconnect || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">Route Metric</div><input id="${ids.routeMetric}" value="${escapeHtml(routing.route_metric || '')}" placeholder="preserve existing" /></div>
+            <div class="metric"><div class="label">Never Default</div>${customSelectMarkup(ids.neverDefault, `interface_config.${domId}.never_default`, threeStateOptions, routing.never_default || 'preserve_existing')}</div>
+            <div class="metric"><div class="label">Ignore Auto Routes</div>${customSelectMarkup(ids.ignoreAutoRoutes, `interface_config.${domId}.ignore_auto_routes`, threeStateOptions, routing.ignore_auto_routes || 'preserve_existing')}</div>
           </div>
           <div class="hint">These values are saved as desired state only. They feed readiness and plan preview; they do not change live NetworkManager profiles yet.</div>
-        </details>`}
-        ${behaviorItem ? `<details class="config-section" open><summary><span>Behavior</span><span>${escapeHtml(interfaceBehaviorLabel(currentBehavior))}</span></summary><div class="stat-grid" style="margin-top:10px;"><div class="metric"><div class="label">Behavior</div>${customSelectMarkup(behaviorId, `interface_behavior.${configItem.interface}`, behaviorOptionItems, currentBehavior)}</div><div class="metric"><div class="label">Source</div><div class="value small">${escapeHtml((behaviorItem.configured_behavior || behaviorItem.configured_profile) ? 'configured' : 'live discovery')}</div></div></div><div class="controls"><button type="button" onclick="saveInterfaceBehavior('${escapeHtml(configItem.interface || '')}', '${behaviorId}')">Save Behavior</button></div><div class="hint">Behavior selects which settings surface belongs to this discovered interface.</div></details>` : ''}
-        ${interfaceConfigSettingsSurface(configItem, behaviorItem, lanProfile, serviceLan)}
-        <div class="controls">
-          <button type="button" onclick="saveInterfaceDesiredConfig('${escapeHtml(configItem.id || '')}', '${inputId}', '${mtuId}', '${autoconnectId}', '${routeMetricId}', '${neverDefaultId}', '${ignoreRoutesId}')">Save Desired Config</button>
+        </details>` : ''}
+        ${canEditDesired ? '' : `<div class="route warn-route"><div class="label">Observe Only</div><div class="hint">${escapeHtml(observeOnlyReason)}</div></div>`}
+        <details class="config-section">
+          <summary><span>Provider Notes</span><span>${escapeHtml(capabilities.owner || 'unknown')}</span></summary>
+          <div class="route">
+            <div class="label">Control Model</div>
+            <div class="hint">This drawer shows the generic LocalPlane desired-state model for the discovered interface. Older Main/Client LAN compatibility data can still seed defaults, but the old role-specific LAN form is no longer duplicated here.</div>
+          </div>
+          ${(capabilities.warnings || []).length ? `<div class="route warn-route"><div class="label">Warnings</div><div class="line-list">${capabilities.warnings.map(item => `<div>${escapeHtml(item)}</div>`).join('')}</div></div>` : ''}
+          ${(capabilities.planned || []).length ? `<div class="route"><div class="label">Planned Provider Work</div><div class="line-list">${capabilities.planned.map(item => `<div>${escapeHtml(item.replaceAll('_', ' '))}</div>`).join('')}</div></div>` : ''}
+        </details>
+        ${canEditDesired ? `<div class="controls">
+          <button type="button" onclick='saveInterfaceDesiredConfig(${previewItemJson}, ${saveIds})'>Save Desired Config</button>
           <button type="button" class="secondary" onclick="resetInterfaceConfig('${escapeHtml(configItem.id || '')}')">Reset Saved Config</button>
-        </div>
+        </div>` : ''}
       `;
     }
-    function renderInterfaceConfigs(configPayload = {}, behaviorPayload = {}, lanProfile = {}, serviceLan = {}) {
-      const configs = configPayload.configs || [];
-      const behaviorsByInterface = Object.fromEntries((behaviorPayload.interfaces || []).map(item => [item.interface, item]));
+    function renderInterfaceConfigs(configPayload = {}) {
+      const objectConfigs = (configPayload.objects || []).map(item => ({
+        id: item.id,
+        interface: item.interface,
+        kind: item.kind,
+        kind_label: item.kind_label,
+        status: item.status,
+        readiness: item.readiness || {},
+        rules_preview: item.rules_preview || [],
+        identity: item.identity || {},
+        live: item.live || {},
+        capabilities: item.capabilities || {},
+        config: item.desired || {},
+        source: item.source || 'observed',
+        editable: item.editable,
+      }));
+      const configs = (configPayload.configs && configPayload.configs.length) ? configPayload.configs : objectConfigs;
+      const discoveredIds = new Set(configs.map(item => item.id).filter(Boolean));
+      const storedConfigs = ((configPayload.model || {}).stored_configs || []);
+      const staleStored = storedConfigs.filter(item => item.id && !discoveredIds.has(item.id));
+      const groups = (configPayload.groups || []).length
+        ? configPayload.groups.map(group => ({
+            ...group,
+            items: (group.items || []).map(objectItem => configs.find(configItem => configItem.id === objectItem.id || configItem.interface === objectItem.interface)).filter(Boolean),
+          })).filter(group => group.items.length)
+        : Object.entries(configs.reduce((acc, item) => {
+            const key = item.kind || 'other';
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(item);
+            return acc;
+          }, {})).map(([kind, items]) => ({ kind, label: (items[0] || {}).kind_label || kind, items }));
+      const summary = configPayload.summary || {};
       appState.interfaceConfigDetails = {};
+      let detailIndex = 0;
+      const renderConfigCard = (item) => {
+        const tone = configStatusTone(item);
+        const detailId = `interface-config-${detailIndex++}`;
+        appState.interfaceConfigDetails[detailId] = {
+          title: `${configDisplayName(item)} / ${item.interface || '-'}`,
+          subtitle: `${item.kind_label || item.kind || '-'} | ${item.source || 'observed'}`,
+          body: interfaceConfigBody(item),
+          tone,
+        };
+        return `<div class="portfolio-card ${tone}">
+          <div class="portfolio-top">
+            <div>
+              <div class="portfolio-title">${escapeHtml(configDisplayName(item))}</div>
+              <div class="portfolio-url">${escapeHtml(configLiveSummary(item))}</div>
+            </div>
+          </div>
+          <div class="portfolio-status ${tone}">${escapeHtml(configStatusLabel(item))}</div>
+          <div class="muted">${escapeHtml(configDesiredSummary(item))}</div>
+          ${((item.readiness || {}).findings || []).length ? `<div class="muted">${escapeHtml(((item.readiness || {}).findings || [])[0].title || 'Readiness warning')}</div>` : ''}
+          <button class="window-button" type="button" onclick="openInterfaceConfigWindow('${detailId}')"><span>${(item.capabilities || {}).configurable === true && item.editable !== false ? 'Configure' : 'View'}</span><span>${escapeHtml(item.source || 'observed')}</span></button>
+        </div>`;
+      };
       return `
-        <div class="portfolio-grid small">
-          ${configs.length ? configs.map((item, index) => {
-            const tone = configStatusTone(item);
-            const detailId = `interface-config-${index}`;
-            const behaviorItem = behaviorsByInterface[item.interface] || null;
-            appState.interfaceConfigDetails[detailId] = {
-              title: `${configDisplayName(item)} / ${item.interface || '-'}`,
-              subtitle: `${item.kind_label || item.kind || '-'} | ${item.source || 'observed'}`,
-              body: interfaceConfigBody(item, behaviorItem, lanProfile, serviceLan),
-              tone,
-            };
-            return `<div class="portfolio-card ${tone}">
-              <div class="portfolio-top">
-                <div>
-                  <div class="portfolio-title">${escapeHtml(configDisplayName(item))}</div>
-                  <div class="portfolio-url">${escapeHtml(configLiveSummary(item))}</div>
-                </div>
-              </div>
-              <div class="portfolio-status ${tone}">${escapeHtml((item.live || {}).state || 'unknown')}</div>
-              <div class="muted">${escapeHtml(configDesiredSummary(item))}</div>
-              <button class="window-button" type="button" onclick="openInterfaceConfigWindow('${detailId}')"><span>Configure</span><span>${escapeHtml(item.source || 'observed')}</span></button>
-            </div>`;
-          }).join('') : '<div class="muted">No configurable interfaces discovered</div>'}
+        <div class="object-summary">
+          <span>${escapeHtml(String(summary.objects ?? configs.length))} objects</span>
+          <span>${escapeHtml(String(summary.editable ?? configs.filter(item => item.editable).length))} configurable</span>
+          <span>${escapeHtml(String(summary.observe_only ?? configs.filter(item => (item.capabilities || {}).observe_only).length))} observe only</span>
+          ${(summary.blocked || summary.warnings) ? `<span>${escapeHtml(String(summary.blocked || 0))} blocked / ${escapeHtml(String(summary.warnings || 0))} warnings</span>` : ''}
         </div>
-        <div class="hint">Interfaces are discovered from the host. Save Name only records LocalPlane desired state; apply flows remain preview-gated.</div>
+        ${staleStored.length ? `<div class="route warn-route"><div class="item-top"><div><div class="label">Stale Saved Configs</div><div class="muted">${staleStored.length} saved interface config${staleStored.length === 1 ? '' : 's'} no longer match a discovered interface.</div></div><button class="secondary" type="button" onclick="pruneStaleInterfaceConfigs()">Clear stale</button></div></div>` : ''}
+        ${groups.length ? groups.map(group => `<section class="object-group">
+          <div class="object-group-header">
+            <div><div class="label">${escapeHtml(group.label || group.kind || 'Interfaces')}</div><div class="muted">${escapeHtml(String(group.items.length))} discovered</div></div>
+          </div>
+          <div class="portfolio-grid small">${group.items.map(renderConfigCard).join('')}</div>
+        </section>`).join('') : '<div class="muted">No interfaces discovered</div>'}
+        <div class="hint">Interfaces are discovered from the host. Saved desired state is kept by stable interface identity when possible; apply flows remain preview-gated.</div>
       `;
     }
     function lanProfileForInterface(kind, profile, item) {
@@ -2200,8 +2573,6 @@ import './styles.css';
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">Behavior</div>${customSelectMarkup(assignmentId, `interface_behavior.${item.interface}`, behaviorOptionItems, assignedBehavior)}</div>
             <div class="metric"><div class="label">Source</div><div class="value small">${escapeHtml((item.configured_behavior || item.configured_profile) ? 'configured' : 'live discovery')}</div></div>
-            <div class="metric"><div class="label">Detected Kind</div><div class="value small">${escapeHtml(item.detected_kind || item.detected_role || '-')}</div></div>
-            <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(item.state || '-')}</div></div>
           </div>
           <div class="controls"><button type="button" onclick="saveInterfaceBehavior('${escapeHtml(item.interface || '')}', '${assignmentId}')">Save Behavior</button></div>
           <div class="hint">Saving behavior records intent for this discovered interface. It does not restart links or apply routing by itself.</div>
@@ -2209,9 +2580,11 @@ import './styles.css';
       `;
       const liveFacts = `
         <div class="stat-grid" style="margin-top:12px;">
-          <div class="metric"><div class="label">Interface</div><div class="value small">${escapeHtml(item.interface || '-')}</div></div>
+          <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(item.state || '-')}</div></div>
+          <div class="metric"><div class="label">Detected Kind</div><div class="value small">${escapeHtml(item.detected_kind || item.detected_role || '-')}</div></div>
           <div class="metric"><div class="label">Stable ID</div><div class="value small">${escapeHtml(identity.stable_key || '-')}</div></div>
           <div class="metric"><div class="label">Driver / Bus</div><div class="value small">${escapeHtml([identity.driver, identity.bus].filter(Boolean).join(' / ') || '-')}</div></div>
+          <div class="metric"><div class="label">MAC</div><div class="value small">${escapeHtml(item.mac || '-')}</div></div>
           <div class="metric"><div class="label">Connection</div><div class="value small">${escapeHtml(nm.connection || 'no profile')}</div></div>
           <div class="metric"><div class="label">IPv4</div><div class="value small">${escapeHtml((item.ipv4 || []).join(', ') || '-')}</div></div>
           <div class="metric"><div class="label">IPv6</div><div class="value small">${escapeHtml((item.ipv6 || []).join(', ') || '-')}</div></div>
@@ -2219,9 +2592,9 @@ import './styles.css';
       `;
       let settingsSurface = '';
       if (genericLabel === 'management_lan') {
-        settingsSurface = `<div class="route"><div class="label">Trusted LAN Settings</div><div style="margin-top:10px;">${renderLanCard('main', lanProfileForInterface('main', lanProfile, item), { fixedInterface: true })}</div></div>`;
+        settingsSurface = `<div class="route"><div class="label">Apply Path</div><div class="hint">This interface uses generic desired-state configuration. Legacy LAN apply endpoints remain a compatibility bridge until reconcile owns the hard apply path.</div></div>`;
       } else if (genericLabel === 'device_lan') {
-        settingsSurface = `<div class="route"><div class="label">Client LAN Settings</div><div style="margin-top:10px;">${renderLanCard('service', lanProfileForInterface('service', serviceLan, item), { fixedInterface: true })}</div></div>`;
+        settingsSurface = `<div class="route"><div class="label">Apply Path</div><div class="hint">Client egress, DHCP/RA, NAT and isolation should be applied through preview/reconcile, not through fixed Main/Service cards.</div></div>`;
       } else if (genericLabel === 'uplink_wifi' || genericLabel === 'hotspot_wifi') {
         settingsSurface = `<div class="route"><div class="label">Wireless Settings</div><div class="hint">This interface is shown here as inventory. Detailed SSID, hotspot and radio settings remain on the Wireless page until Wi-Fi becomes multi-radio.</div></div>`;
       } else if (genericLabel === 'uplink_cellular') {
@@ -2229,7 +2602,7 @@ import './styles.css';
       } else if (genericLabel === 'uplink_ethernet') {
         settingsSurface = `<div class="route"><div class="label">Ethernet Uplink</div><div class="hint">Wired uplink failover scoring is planned. For now this behavior is recorded for route/firewall previews and diagnostics.</div></div>`;
       } else if (genericLabel === 'management_tunnel') {
-        settingsSurface = `<div class="route"><div class="label">Management Tunnel</div><div class="hint">Tunnel policy is read-only for now. Future settings will control advertised routes and management exposure.</div></div>`;
+        settingsSurface = `<div class="route"><div class="label">Remote Access Tunnel</div><div class="hint">Tunnel policy is read-only for now. Future settings will control advertised routes and access exposure.</div></div>`;
       } else {
         settingsSurface = `<div class="route"><div class="label">No Settings Surface Yet</div><div class="hint">Choose compatible behavior for this interface to reveal the matching configuration surface.</div></div>`;
       }
@@ -2276,6 +2649,15 @@ import './styles.css';
     function renderWireless(wifi, interfaces, wifiClients, piholeNetworks, overview) {
       const radioInterfaces = wirelessInterfaces(interfaces, wifi);
       const selectedWifiInterface = draftValue('wifi.selected_interface', sessionStorage.getItem('portal.wifi.selected_interface') || wifi.interface || interfaceNameOf((radioInterfaces || [])[0]));
+      const wifiSurfaces = providerSurfacesFor(radioInterfaces, selectedWifiInterface, [
+        { id: 'radio', label: 'Radio', state: 'read_only' },
+        { id: 'client', label: 'Client', state: 'legacy_apply' },
+        { id: 'hotspot', label: 'Hotspot', state: 'legacy_apply' },
+        { id: 'scan', label: 'Scan', state: 'read_only' },
+        { id: 'routing', label: 'Routing', state: 'planned' },
+        { id: 'traffic', label: 'Traffic', state: 'read_only' },
+      ]);
+      const wifiSurface = draftValue('wifi.surface', sessionStorage.getItem('portal.wifi.surface') || 'radio');
       const wifiPowerPending = isTogglePending('wifi:power');
       const wifiRadioOn = String((wifi.device || {}).wifi_radio || '').toLowerCase() === 'enabled';
       const wifiMode = draftValue('wifi.mode', wifi.config.mode);
@@ -2288,10 +2670,13 @@ import './styles.css';
       const hotspotSecurity = draftValue('wifi.hotspot_security', wifi.config.hotspot_security || 'wpa2-personal');
       const channelOptions = wifiChannelOptions(wifiBand);
       const wifiWarnings = [...(wifi.errors || []), ...(wifi.warnings || [])];
-      return `
+      const common = `
+        ${renderProviderInventorySummary('Wi-Fi radio inventory', radioInterfaces, 'radio')}
         ${renderInterfaceSwitcher('Wireless Interfaces', radioInterfaces, selectedWifiInterface, 'wifi.selected_interface', 'No Wi-Fi radios discovered yet. USB Wi-Fi adapters will appear here when the host sees them.')}
+        ${renderProviderSurfaceTabs('Wireless provider surfaces', wifiSurfaces, wifiSurface, 'wifi.surface')}
         ${renderSelectedInterfaceFacts(radioInterfaces, selectedWifiInterface)}
-        ${wifiWarnings.length ? `<div class="route"><div class="label">Apply Readiness</div><div class="item-list" style="margin-top:10px;">${wifiWarnings.map((warning, index) => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(warning)}</div><div class="badge ${index < (wifi.errors || []).length ? 'offline' : 'warn'}">${index < (wifi.errors || []).length ? 'error' : 'warn'}</div></div></div>`).join('')}</div></div>` : ''}
+        ${wifiWarnings.length ? `<div class="route"><div class="label">Apply Readiness</div><div class="item-list" style="margin-top:10px;">${wifiWarnings.map((warning, index) => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(warning)}</div><div class="badge ${index < (wifi.errors || []).length ? 'offline' : 'warn'}">${index < (wifi.errors || []).length ? 'error' : 'warn'}</div></div></div>`).join('')}</div></div>` : ''}`;
+      const radioSection = `
         <div class="stat-grid">
           <div class="metric"><div class="label">Selected Interface</div><div class="value small">${escapeHtml(selectedWifiInterface || wifi.interface || '-')}</div></div>
           <div class="metric"><div class="label">Active Mode</div><div class="value small">${escapeHtml((wifi.active || {}).mode || '-')}</div></div>
@@ -2311,43 +2696,57 @@ import './styles.css';
           </div>
         </details>
         <details class="config-section">
-          <summary><span>Config</span><span>${escapeHtml(wifiMode)} / ${escapeHtml(wifiBandLabel(wifiBand))}</span></summary>
+          <summary><span>Radio Details</span><span>${escapeHtml((wifi.device || {}).wifi_radio || '-')}</span></summary>
+          <div class="route"><div class="label">Wi-Fi Capabilities</div><div>${(wifi.capabilities || {}).band_2ghz === 'yes' ? '2.4 GHz ' : ''}${(wifi.capabilities || {}).band_5ghz === 'yes' ? '| 5 GHz ' : ''}${(wifi.capabilities || {}).ap === 'yes' ? '| AP mode ' : ''}${(wifi.capabilities || {}).wpa2 === 'yes' ? '| WPA2' : ''}</div></div>
+          <div class="route"><div class="label">RFKill</div><div>${(wifi.rfkill || []).length ? wifi.rfkill.map(r => `${escapeHtml(r.name || r.type)}: soft=${escapeHtml(r.soft)} hard=${escapeHtml(r.hard)}`).join('<br>') : 'No rfkill entries'}</div></div>
+        </details>
+        <div class="hint">${(wifi.notes || []).join(' ')}</div>`;
+      const configSection = `
+        <details class="config-section" open>
+          <summary><span>${wifiSurface === 'hotspot' ? 'Hotspot Config' : 'Client Config'}</span><span>${escapeHtml(wifiMode)} / ${escapeHtml(wifiBandLabel(wifiBand))}</span></summary>
           <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">Mode</div>${customSelectMarkup('wifi-mode', 'wifi.mode', ['client','hotspot'], wifiMode)}</div>
             <div class="metric"><div class="label">Country</div>${customSelectMarkup('wifi-country', 'wifi.country', ['DE','TR','US','GB','NL','FR'], draftValue('wifi.country', wifi.config.country || wifi.country || 'DE'))}</div>
-            <div class="metric"><div class="label">Client Trust</div>${customSelectMarkup('wifi-client-trust-mode', 'wifi.client_trust_mode', [{value:'normal',label:'Normal'},{value:'isolated',label:'Isolated'}], wifiClientTrustMode, { disabled: wifiMode !== 'client' })}</div>
+            ${wifiSurface !== 'hotspot' ? `<div class="metric"><div class="label">Client Trust</div>${customSelectMarkup('wifi-client-trust-mode', 'wifi.client_trust_mode', [{value:'normal',label:'Normal'},{value:'isolated',label:'Isolated'}], wifiClientTrustMode, { disabled: wifiMode !== 'client' })}</div>` : ''}
+            ${wifiSurface !== 'hotspot' ? `<div class="metric"><div class="label">Client SSID</div><input id="wifi-ssid" value="${draftValue('wifi.ssid', wifi.config.ssid || '')}" /></div><div class="metric"><div class="label">Client Password</div><input id="wifi-password" type="password" value="${draftValue('wifi.password', '')}" /></div>` : ''}
+            ${wifiSurface === 'hotspot' ? `<div class="metric"><div class="label">Hotspot SSID</div><input id="wifi-hotspot-ssid" value="${draftValue('wifi.hotspot_ssid', wifi.config.hotspot_ssid || '')}" /></div><div class="metric"><div class="label">Hotspot Password</div><input id="wifi-hotspot-password" type="password" value="${draftValue('wifi.hotspot_password', '')}" placeholder="Leave empty to keep current saved password" /></div><div class="metric"><div class="label">Security Profile</div>${customSelectMarkup('wifi-hotspot-security', 'wifi.hotspot_security', [{value:'wpa3-personal',label:'WPA3-Personal'},{value:'wpa2-personal',label:'WPA2-Personal'},{value:'open',label:'Open'}], hotspotSecurity)}</div><div class="metric"><div class="label">Band</div>${customSelectMarkup('wifi-band', 'wifi.band', [{value:'2.4ghz',label:'2.4 GHz'},{value:'5ghz',label:'5 GHz'}], wifiBand)}</div><div class="metric"><div class="label">Channel</div>${customSelectMarkup('wifi-channel', 'wifi.channel', channelOptions.map(v => ({ value: v, label: v === 'auto' ? 'Auto' : `Channel ${v}` })), wifiChannel)}</div>` : ''}
+          </div>
+          <div class="hint">${wifiSurface === 'hotspot' ? 'Hotspot changes use the existing guarded Wi-Fi apply path.' : `${uplinkPreferenceLabel(wifiUplinkPreference)} controls route metric and default-route behavior for Wi-Fi client mode.`}</div>
+          <div class="controls"><button onclick="applyWifiPreview()">Apply Config</button></div>
+        </details>`;
+      const routingSection = `
+        <details class="config-section" open>
+          <summary><span>Wi-Fi Routing</span><span>${escapeHtml(uplinkPreferenceLabel(wifiUplinkPreference))}</span></summary>
+          <div class="stat-grid" style="margin-top:10px;">
             <div class="metric"><div class="label">Uplink Preference</div>${customSelectMarkup('wifi-uplink-preference', 'wifi.uplink_preference', uplinkPreferenceOptions(), wifiUplinkPreference, { disabled: wifiMode !== 'client', afterChange: 'setUplinkPreference' })}</div>
-            ${wifiMode === 'client' ? `<div class="metric"><div class="label">Client SSID</div><input id="wifi-ssid" value="${draftValue('wifi.ssid', wifi.config.ssid || '')}" /></div>` : ''}
-            ${wifiMode === 'client' ? `<div class="metric"><div class="label">Client Password</div><input id="wifi-password" type="password" value="${draftValue('wifi.password', '')}" /></div>` : ''}
-            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Hotspot SSID</div><input id="wifi-hotspot-ssid" value="${draftValue('wifi.hotspot_ssid', wifi.config.hotspot_ssid || '')}" /></div>` : ''}
-            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Hotspot Password</div><input id="wifi-hotspot-password" type="password" value="${draftValue('wifi.hotspot_password', '')}" placeholder="Leave empty to keep current saved password" /></div>` : ''}
-            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Security Profile</div>${customSelectMarkup('wifi-hotspot-security', 'wifi.hotspot_security', [{value:'wpa3-personal',label:'WPA3-Personal'},{value:'wpa2-personal',label:'WPA2-Personal'},{value:'open',label:'Open'}], hotspotSecurity)}</div>` : ''}
-            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Band</div>${customSelectMarkup('wifi-band', 'wifi.band', [{value:'2.4ghz',label:'2.4 GHz'},{value:'5ghz',label:'5 GHz'}], wifiBand)}</div>` : ''}
-            ${wifiMode === 'hotspot' ? `<div class="metric"><div class="label">Channel</div>${customSelectMarkup('wifi-channel', 'wifi.channel', channelOptions.map(v => ({ value: v, label: v === 'auto' ? 'Auto' : `Channel ${v}` })), wifiChannel)}</div>` : ''}
             <div class="metric"><div class="label">IPv4 Mode</div>${customSelectMarkup('wifi-ipv4-method', 'wifi.ipv4_method', (wifiMode === 'hotspot' ? ['shared','manual','disabled'] : ['auto','manual','disabled']).map(v => ({ value: v, label: ipv4ModeLabel(v) })), wifiIpv4Method)}</div>
             ${wifiIpv4Method === 'manual' ? `<div class="metric"><div class="label">IPv4 Address</div><input id="wifi-ipv4-address" value="${draftValue('wifi.ipv4_address', wifi.config.ipv4_address || '')}" /></div>` : ''}
             <div class="metric"><div class="label">IPv6 Mode</div>${customSelectMarkup('wifi-ipv6-method', 'wifi.ipv6_method', (wifiMode === 'hotspot' ? ['shared','manual','disabled'] : ['auto','manual','disabled']).map(v => ({ value: v, label: wifiMode === 'hotspot' ? wifiHotspotIpv6Label(v) : ipv6ModeLabel(v) })), wifiIpv6Method)}</div>
             ${wifiIpv6Method === 'manual' ? `<div class="metric"><div class="label">IPv6 Address / Prefix</div><input id="wifi-ipv6-address" value="${draftValue('wifi.ipv6_address', wifi.config.ipv6_address || '')}" placeholder="fd42:42::1/64" /></div>` : ''}
             <div class="metric"><div class="label">Pi-hole</div><div class="switch-row" style="margin-top:8px;"><div class="muted">Use Pi-hole on Wi-Fi</div><label class="switch"><input id="wifi-pihole-toggle" type="checkbox" ${piholeNetworks.wifi ? 'checked' : ''}><span class="slider"></span></label></div></div>
           </div>
-          <div class="hint">${wifiMode === 'client' ? `${uplinkPreferenceLabel(wifiUplinkPreference)} controls route metric and default-route behavior for Wi-Fi. ${wifiClientTrustMode === 'isolated' ? 'Isolated client mode blocks inbound access from the upstream Wi-Fi and stops that uplink from reaching local LAN segments. It helps on hotel and public Wi-Fi, but it is not a VPN and does not by itself eliminate upstream MITM risk.' : 'Normal client mode behaves like a regular Wi-Fi client.'}` : 'Client Trust and uplink preference apply in client mode. Switch Mode to client if you want to tune upstream Wi-Fi behavior.'}</div>
-          <div class="controls"><button onclick="applyWifiPreview()">Apply Config</button><button class="secondary" onclick="rescanWifi()">Rescan</button></div>
-        </details>
-        <details class="config-section">
+          <div class="controls"><button onclick="applyWifiPreview()">Apply Config</button></div>
+        </details>`;
+      const scanSection = `
+        <details class="config-section" open>
+          <summary><span>Visible Wi-Fi Networks</span><span>${(wifi.scan || []).length}</span></summary>
+          <div class="controls"><button class="secondary" onclick="rescanWifi()">Rescan</button></div>
+          <div class="item-list" style="margin-top:10px;">${(wifi.scan || []).length ? wifi.scan.map(n => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(n.ssid)}</div><div class="badge">${escapeHtml(String(n.signal))}%</div></div><div class="muted">Channel ${escapeHtml(n.channel || '-')} | ${escapeHtml(n.security || 'open')} ${n.in_use ? '| connected' : ''}</div></div>`).join('') : '<div class="muted">No scan results</div>'}</div>
+        </details>`;
+      const trafficSection = `
+        <details class="config-section" open>
           <summary><span>Connected Wi-Fi Clients</span><span>${(wifiClients || []).length}</span></summary>
           <div class="item-list scroll-list" style="margin-top:10px;">${(wifiClients || []).length ? wifiClients.map(c => `<div class="item client-item"><div class="item-top"><div class="item-title">${escapeHtml(c.hostname || c.mac || 'Client')}</div><div class="badge">${escapeHtml(c.interface || '-')}</div></div><div class="muted">Primary IP: ${escapeHtml(c.ip)} | MAC: ${escapeHtml(c.mac || '-')} | ${escapeHtml(c.state || '-')}</div>${c.secondary_ips ? `<div class="muted">Extra IPs: ${escapeHtml(c.secondary_ips)}</div>` : ''}</div>`).join('') : '<div class="muted">No Wi-Fi clients detected</div>'}</div>
-        </details>
-        <details class="config-section">
-          <summary><span>Visible Wi-Fi Networks</span><span>${(wifi.scan || []).length}</span></summary>
-          <div class="item-list" style="margin-top:10px;">${(wifi.scan || []).length ? wifi.scan.map(n => `<div class="item"><div class="item-top"><div class="item-title">${escapeHtml(n.ssid)}</div><div class="badge">${escapeHtml(String(n.signal))}%</div></div><div class="muted">Channel ${escapeHtml(n.channel || '-')} | ${escapeHtml(n.security || 'open')} ${n.in_use ? '| connected' : ''}</div></div>`).join('') : '<div class="muted">No scan results</div>'}</div>
-        </details>
-        <details class="config-section">
-          <summary><span>Radio Details</span><span>${escapeHtml((wifi.device || {}).wifi_radio || '-')}</span></summary>
-          <div class="route"><div class="label">Wi-Fi Capabilities</div><div>${(wifi.capabilities || {}).band_2ghz === 'yes' ? '2.4 GHz ' : ''}${(wifi.capabilities || {}).band_5ghz === 'yes' ? '| 5 GHz ' : ''}${(wifi.capabilities || {}).ap === 'yes' ? '| AP mode ' : ''}${(wifi.capabilities || {}).wpa2 === 'yes' ? '| WPA2' : ''}</div></div>
-          <div class="route"><div class="label">RFKill</div><div>${(wifi.rfkill || []).length ? wifi.rfkill.map(r => `${escapeHtml(r.name || r.type)}: soft=${escapeHtml(r.soft)} hard=${escapeHtml(r.hard)}`).join('<br>') : 'No rfkill entries'}</div></div>
-        </details>
-        <div class="hint">${(wifi.notes || []).join(' ')}</div>
-      `;
+        </details>`;
+      const sectionBySurface = {
+        radio: radioSection,
+        client: configSection,
+        hotspot: configSection,
+        routing: routingSection,
+        scan: scanSection,
+        traffic: trafficSection,
+      };
+      return `${common}${sectionBySurface[wifiSurface] || radioSection}`;
     }
     function renderCellular(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview, interfaces = []) {
       const suggested = (lteSuggest.suggested || {});
@@ -2382,9 +2781,7 @@ import './styles.css';
       const uplinkPreferenceControl = customSelectMarkup('cellular-uplink-preference', 'wifi.uplink_preference', uplinkPreferenceOptions(), wifiUplinkPreference, { afterChange: 'setUplinkPreference' });
       appState.rawProfile = rawProfile;
       return {
-        state: !lte.available ? `${renderInterfaceSwitcher('Cellular Interfaces', modemInterfaces, selectedCellularInterface, 'cellular.selected_interface', 'No cellular modems discovered yet. USB 4G/5G modems will appear here when ModemManager or the kernel exposes them.')}${renderSelectedInterfaceFacts(modemInterfaces, selectedCellularInterface)}<div class="stat-grid"><div class="metric"><div class="label">Modem</div><div class="value small">Not available</div></div><div class="metric"><div class="label">Uplink Preference</div>${uplinkPreferenceControl}</div></div>` : `
-          ${renderInterfaceSwitcher('Cellular Interfaces', modemInterfaces, selectedCellularInterface, 'cellular.selected_interface', 'No cellular modems discovered yet. USB 4G/5G modems will appear here when ModemManager or the kernel exposes them.')}
-          ${renderSelectedInterfaceFacts(modemInterfaces, selectedCellularInterface)}
+        state: !lte.available ? `<div class="stat-grid"><div class="metric"><div class="label">Modem</div><div class="value small">Not available</div></div><div class="metric"><div class="label">Uplink Preference</div>${uplinkPreferenceControl}</div></div>` : `
           <div class="stat-grid">
             <div class="metric"><div class="label">Operator</div><div class="value small">${escapeHtml(lte.operator_name || '-')} (${escapeHtml(lte.operator_mcc || '-')}${escapeHtml(lte.operator_mnc || '')})</div></div>
             <div class="metric"><div class="label">State</div><div class="value small">${escapeHtml(lte.state || '-')}</div></div>
@@ -2427,6 +2824,53 @@ import './styles.css';
         `,
       };
     }
+    function renderCellularProviderPanel(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview, interfaces = []) {
+      const defaultDev = ((overview || {}).uplink_ipv4 || {}).dev || ((overview || {}).uplink_ipv6 || {}).dev || '';
+      const modemInterfaces = cellularInterfaces(interfaces, lte, lteProfile, overview);
+      const selectedCellularInterface = draftValue('cellular.selected_interface', sessionStorage.getItem('portal.cellular.selected_interface') || defaultDev || interfaceNameOf(modemInterfaces[0]));
+      const baseSurfaces = providerSurfacesFor(modemInterfaces, selectedCellularInterface, [
+        { id: 'modem', label: 'Modem', state: 'read_only' },
+        { id: 'sim', label: 'SIM / Operator', state: 'read_only' },
+        { id: 'apn', label: 'APN', state: 'legacy_apply' },
+        { id: 'routing', label: 'Routing', state: 'planned' },
+        { id: 'traffic', label: 'Traffic', state: 'read_only' },
+      ]);
+      const surfaces = [...baseSurfaces, { id: 'tools', label: 'Tools', state: 'guarded' }];
+      const activeSurface = draftValue('cellular.surface', sessionStorage.getItem('portal.cellular.surface') || 'modem');
+      const parts = renderCellular(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview, interfaces);
+      const wifiUplinkPreference = draftValue('wifi.uplink_preference', ((appState.wifi || {}).config || {}).uplink_preference || 'prefer-lte');
+      const routing = `
+        <details class="config-section" open>
+          <summary><span>Cellular Routing</span><span>${escapeHtml(uplinkPreferenceLabel(wifiUplinkPreference))}</span></summary>
+          <div class="stat-grid" style="margin-top:10px;">
+            <div class="metric"><div class="label">Selected Modem</div><div class="value small">${escapeHtml(selectedCellularInterface || '-')}</div></div>
+            <div class="metric"><div class="label">Default Route</div><div class="value small">${defaultDev === selectedCellularInterface ? 'Active' : 'Not active'}</div></div>
+            <div class="metric"><div class="label">Uplink Preference</div>${customSelectMarkup('cellular-uplink-preference', 'wifi.uplink_preference', uplinkPreferenceOptions(), wifiUplinkPreference, { afterChange: 'setUplinkPreference' })}</div>
+          </div>
+          <div class="hint">Routing/failover settings are still shared with the current Wi-Fi/cellular preference path. A per-uplink planner should own this later.</div>
+        </details>`;
+      const traffic = `
+        <details class="config-section" open>
+          <summary><span>Cellular Traffic</span><span>${escapeHtml(selectedCellularInterface || '-')}</span></summary>
+          ${renderSelectedInterfaceFacts(modemInterfaces, selectedCellularInterface)}
+          <div class="hint">Live counters come from the host interface inventory. A proper traffic history needs the future event/metrics feed.</div>
+        </details>`;
+      const contentBySurface = {
+        modem: parts.state,
+        sim: parts.state,
+        apn: parts.apn,
+        routing,
+        traffic,
+        tools: parts.at,
+      };
+      const common = `
+        ${renderProviderInventorySummary('Cellular modem inventory', modemInterfaces, 'modem')}
+        ${renderInterfaceSwitcher('Cellular Interfaces', modemInterfaces, selectedCellularInterface, 'cellular.selected_interface', 'No cellular modems discovered yet. USB 4G/5G modems will appear here when ModemManager or the kernel exposes them.')}
+        ${renderProviderSurfaceTabs('Cellular provider surfaces', surfaces, activeSurface, 'cellular.surface')}
+        ${renderSelectedInterfaceFacts(modemInterfaces, selectedCellularInterface)}
+      `;
+      return `${common}${contentBySurface[activeSurface] || parts.state}`;
+    }
     function renderPiHolePanel(pihole, piholeNetworks) {
       const health = pihole.health || {};
       const healthState = String(health.state || 'unknown').toUpperCase();
@@ -2446,8 +2890,8 @@ import './styles.css';
           ${healthMessages.length > 1 ? `<div class="tag-row">${healthMessages.slice(1).map(item => `<span class="mini-tag">${escapeHtml(item)}</span>`).join('')}</div>` : ''}
         </div>
         <div class="route"><div class="label">Network Toggles</div><div class="item-list" style="margin-top:10px;">
-          ${piholeToggleMarkup('Trusted LAN', 'main_lan', piholeNetworks.main_lan, 'Use Pi-hole for the trusted local segment.')}
-          ${piholeToggleMarkup('Client LAN', 'service_lan', piholeNetworks.service_lan, 'Use Pi-hole for the client segment.')}
+          ${piholeToggleMarkup('Local Network', 'main_lan', piholeNetworks.main_lan, 'Use Pi-hole for the local segment.')}
+          ${piholeToggleMarkup('Client Network', 'service_lan', piholeNetworks.service_lan, 'Use Pi-hole for the client segment.')}
           ${piholeToggleMarkup('Wi-Fi', 'wifi', piholeNetworks.wifi, 'Use Pi-hole for hotspot or Wi-Fi clients.')}
         </div></div>
         <div class="controls"><button onclick="activatePiholeRouting()">Activate Routing</button><a class="chip" href="http://${window.location.hostname}:8081/admin/" target="_blank" rel="noreferrer">Open Pi-hole</a></div>
@@ -2486,8 +2930,8 @@ import './styles.css';
       return `
         <div class="stat-grid wide">
           <div class="metric"><div class="label">Default Uplink</div><div class="value small">${escapeHtml(uplink.name || defaultDev || uplink.role || '-')}</div></div>
-          <div class="metric"><div class="label">Trusted LAN</div><div class="value small">${escapeHtml(lanProfile.target_interface || '-')} / ${escapeHtml(mainState)}</div></div>
-          <div class="metric"><div class="label">Client LAN</div><div class="value small">${escapeHtml(serviceLan.interface || '-')} / ${escapeHtml(serviceState)}</div></div>
+          <div class="metric"><div class="label">Local Network</div><div class="value small">${escapeHtml(lanProfile.target_interface || '-')} / ${escapeHtml(mainState)}</div></div>
+          <div class="metric"><div class="label">Client Network</div><div class="value small">${escapeHtml(serviceLan.interface || '-')} / ${escapeHtml(serviceState)}</div></div>
           <div class="metric"><div class="label">Wi-Fi</div><div class="value small">${escapeHtml(hotspotMode ? 'Hotspot' : 'Client')} / ${escapeHtml(wifiState)}</div></div>
           <div class="metric"><div class="label">Overlay</div><div class="value small">${escapeHtml(overlay.name || 'None')}</div></div>
           <div class="metric"><div class="label">Discovery Targets</div><div class="value small">${escapeHtml(String(activeTargets))}</div></div>
@@ -3306,7 +3750,7 @@ import './styles.css';
       try {
       let {
         overview, systemStats, lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples,
-        services, serviceInventory, pihole, piholeNetworks, netalert, samba, printing, interfaces, interfaceInventory,
+        services, serviceInventory, pihole, piholeNetworks, netalert, samba, printing, interfaces, interfaceInventory, wifiRadios, cellularModems,
         serviceLan, serviceLanClients, wifiClients, lanProfile, activeSessions, wifi, networkBehaviors, filesystem, deviceIo, providers, capabilities,
         networkDiagnostics, routeFirewallPolicy, networkReconcile, eventLog, actions, actionHistory, settings, interfaceConfigs
       } = await loadPanelData(Boolean(options.force));
@@ -3315,7 +3759,12 @@ import './styles.css';
       appState.serviceDetails = {};
       appState.wifi = wifi;
       appState.settings = settings;
-      const inventoryInterfaces = (interfaceInventory || {}).interfaces || interfaces;
+      const objectInterfaces = networkObjectInterfaces(interfaceConfigs);
+      const wifiObjectInterfaces = networkObjectInterfaces(wifiRadios);
+      const cellularObjectInterfaces = networkObjectInterfaces(cellularModems);
+      const inventoryInterfaces = objectInterfaces.length ? objectInterfaces : ((interfaceInventory || {}).interfaces || interfaces);
+      const wirelessInventoryInterfaces = wifiObjectInterfaces.length ? wifiObjectInterfaces : inventoryInterfaces;
+      const cellularInventoryInterfaces = cellularObjectInterfaces.length ? cellularObjectInterfaces : inventoryInterfaces;
       applyVisibleTabs(settings);
       const crumbRoot = document.querySelector('.crumb-root');
       if (crumbRoot) crumbRoot.textContent = overview.hostname || 'device';
@@ -3332,7 +3781,7 @@ import './styles.css';
         sessionBadge.className = sessionCountClass(totalSessions);
       }
 
-      setPanelHTML('interface-profiles', () => renderInterfaceConfigs(interfaceConfigs, networkBehaviors, lanProfile, serviceLan));
+      setPanelHTML('interface-profiles', () => renderInterfaceConfigs(interfaceConfigs));
 
       setPanelHTML('interfaces', () => {
         const groups = categorizeInterfaces(interfaces);
@@ -3348,15 +3797,9 @@ import './styles.css';
       setPanelHTML('network-diagnostics', () => renderNetworkDiagnostics(networkDiagnostics));
 
       setPanelHTML('service-lan-clients', () => (serviceLanClients || []).length ? `<div class="item-list scroll-list">${serviceLanClients.map(c => `<div class="item client-item"><div class="item-top"><div class="item-title">${escapeHtml(c.hostname || c.mac || 'Client')}</div><div class="badge">${escapeHtml(c.interface || '-')}</div></div><div class="muted">IP: ${escapeHtml(c.ip)} | MAC: ${escapeHtml(c.mac || '-')} | ${escapeHtml(c.family || '-')} | ${escapeHtml(c.state || '-')}</div></div>`).join('')}</div>` : '<div class="muted">No clients detected</div>');
-      setPanelHTML('wifi-panel', () => renderWireless(wifi, inventoryInterfaces, wifiClients, piholeNetworks, overview));
+      setPanelHTML('wifi-panel', () => renderWireless(wifi, wirelessInventoryInterfaces, wifiClients, piholeNetworks, overview));
 
-      const cellular = {};
-      setPanelHTML('cellular-state', () => {
-        Object.assign(cellular, renderCellular(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview, inventoryInterfaces));
-        return cellular.state;
-      });
-      setPanelHTML('cellular-apn', () => cellular.apn || renderCellular(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview, inventoryInterfaces).apn);
-      setPanelHTML('cellular-at', () => cellular.at || renderCellular(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview, inventoryInterfaces).at);
+      setPanelHTML('cellular-panel', () => renderCellularProviderPanel(lte, lteProfile, lteOptions, lteSuggest, lteAuto, atExamples, overview, cellularInventoryInterfaces));
 
       setPanelHTML('pihole-panel', () => renderPiHolePanel(pihole, piholeNetworks));
       setPanelHTML('netalert-panel', () => renderNetAlertPanel(netalert));
@@ -3484,6 +3927,7 @@ Object.assign(window, {
   bindDraft,
   clearDraft,
   setInterfaceSelector,
+  setProviderSurface,
   isTogglePending,
   setTogglePending,
   escapeHtml,
@@ -3561,6 +4005,7 @@ Object.assign(window, {
   saveInterfaceBehavior,
   saveInterfaceDesiredConfig,
   resetInterfaceConfig,
+  pruneStaleInterfaceConfigs,
   setLedState,
   controlSamba,
   setSambaPassword,

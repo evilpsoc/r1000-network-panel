@@ -346,6 +346,74 @@ def _firewall_steps(rule: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _wireless_steps(rule: dict[str, Any]) -> list[dict[str, Any]]:
+    interface = _string(rule.get("interface"))
+    mode = _string(rule.get("mode"), "preserve_existing")
+    ssid = _string(rule.get("ssid"))
+    country = _string(rule.get("country"))
+    band = _string(rule.get("band"))
+    channel = _string(rule.get("channel"))
+    security = _string(rule.get("security"))
+    command = ["nmcli", "connection", "modify", "<wifi-profile-for-interface>"]
+    if ssid:
+        command.extend(["802-11-wireless.ssid", ssid])
+    if band and band != "preserve_existing":
+        command.extend(["802-11-wireless.band", band])
+    if channel and channel.lower() != "auto":
+        command.extend(["802-11-wireless.channel", channel])
+    return [
+        _step(
+            rule=rule,
+            provider="networkmanager",
+            action="plan_wifi_profile",
+            summary=f"Plan Wi-Fi {mode} profile intent for {interface}.",
+            risk="high" if mode == "hotspot" else "medium",
+            command_preview=command,
+            details={
+                "mode": mode,
+                "ssid": ssid,
+                "country": country,
+                "band": band,
+                "channel": channel,
+                "security": security,
+                "secrets": "not included in generic interface desired state",
+            },
+            verify=[
+                f"nmcli device wifi list ifname {shlex.quote(interface)}",
+                f"iw dev {shlex.quote(interface)} info",
+            ],
+            rollback=["Restore the saved NetworkManager Wi-Fi profile snapshot."],
+        )
+    ]
+
+
+def _cellular_steps(rule: dict[str, Any]) -> list[dict[str, Any]]:
+    interface = _string(rule.get("interface"))
+    auto_apn = bool(rule.get("auto_apn"))
+    apn = _string(rule.get("apn"))
+    return [
+        _step(
+            rule=rule,
+            provider="modemmanager",
+            action="plan_cellular_apn",
+            summary=f"Plan {'automatic' if auto_apn else 'manual'} APN intent for {interface}.",
+            risk="high",
+            command_preview=["mmcli", "-m", "<modem>", "--simple-connect", f"apn={apn or '<auto-detected>'}"],
+            details={
+                "auto_apn": auto_apn,
+                "apn": apn,
+                "note": "Apply must verify SIM, registration, carrier and active bearer before changing the live profile.",
+            },
+            verify=[
+                "mmcli -L",
+                "mmcli -m <modem>",
+                "nmcli connection show --active",
+            ],
+            rollback=["Restore previous cellular NetworkManager profile and reconnect after modem settles."],
+        )
+    ]
+
+
 def _steps_for_rule(rule: dict[str, Any]) -> list[dict[str, Any]]:
     rule_type = _string(rule.get("type"))
     if rule_type in {"link.mtu", "connection.autoconnect"}:
@@ -362,6 +430,10 @@ def _steps_for_rule(rule: dict[str, Any]) -> list[dict[str, Any]]:
         return _client_egress_steps(rule)
     if rule_type == "firewall.isolation":
         return _firewall_steps(rule)
+    if rule_type == "wireless.profile":
+        return _wireless_steps(rule)
+    if rule_type == "cellular.apn":
+        return _cellular_steps(rule)
     return [
         _step(
             rule=rule,
