@@ -296,4 +296,4 @@ resolvectl status
 
 ## License
 
-No license has been selected yet.
+This project is licensed under the [Apache License 2.0](LICENSE).
